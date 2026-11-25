@@ -1,0 +1,224 @@
+{
+ "generated": "2026-11-25 14:34",
+ "n_stores": 15592,
+ "verdict_counts": {
+  "hold": 6310,
+  "public": 5557,
+  "biz": 3725
+ },
+ "permit_confirmed": 4242,
+ "types": {
+  "korean": {
+   "name": "한식 음식점",
+   "rel": "weak",
+   "auc": 0.555,
+   "auc_base": 0.519,
+   "avg": 65.3,
+   "n_recent": 2966,
+   "n_test": 4090,
+   "bottom20": 59.0,
+   "top20": 71.0
+  },
+  "pub": {
+   "name": "호프·주점",
+   "rel": "none",
+   "auc": 0.515,
+   "auc_base": 0.498,
+   "avg": 66.1,
+   "n_recent": 632,
+   "n_test": 892,
+   "bottom20": 68.2,
+   "top20": 69.3
+  },
+  "western": {
+   "name": "경양식·레스토랑",
+   "rel": "weak",
+   "auc": 0.545,
+   "auc_base": 0.495,
+   "avg": 60.5,
+   "n_recent": 521,
+   "n_test": 678,
+   "bottom20": 58.1,
+   "top20": 70.6
+  },
+  "snack": {
+   "name": "분식",
+   "rel": "none",
+   "auc": 0.503,
+   "auc_base": 0.522,
+   "avg": 60.3,
+   "n_recent": 305,
+   "n_test": 435,
+   "bottom20": 65.5,
+   "top20": 64.4
+  },
+  "jpcn": {
+   "name": "일식·중식",
+   "rel": "weak",
+   "auc": 0.567,
+   "auc_base": 0.508,
+   "avg": 69.9,
+   "n_recent": 635,
+   "n_test": 834,
+   "bottom20": 65.9,
+   "top20": 74.9
+  },
+  "cafe": {
+   "name": "카페",
+   "rel": "none",
+   "auc": 0.538,
+   "auc_base": 0.528,
+   "avg": 60.2,
+   "n_recent": 2099,
+   "n_test": 2794,
+   "bottom20": 57.6,
+   "top20": 67.4
+  },
+  "conv": {
+   "name": "편의점",
+   "rel": "none",
+   "auc": 0.524,
+   "auc_base": 0.483,
+   "avg": 74.6,
+   "n_recent": 696,
+   "n_test": 936,
+   "bottom20": 74.5,
+   "top20": 79.7
+  },
+  "bakery": {
+   "name": "제과·베이커리",
+   "rel": "ok",
+   "auc": 0.597,
+   "auc_base": 0.511,
+   "avg": 51.5,
+   "n_recent": 388,
+   "n_test": 493,
+   "bottom20": 38.4,
+   "top20": 61.6
+  },
+  "deli": {
+   "name": "반찬·즉석식품",
+   "rel": "ok",
+   "auc": 0.682,
+   "auc_base": 0.506,
+   "avg": 35.8,
+   "n_recent": 2982,
+   "n_test": 3845,
+   "bottom20": 5.9,
+   "top20": 50.2
+  },
+  "hair": {
+   "name": "미용실",
+   "rel": "none",
+   "auc": 0.558,
+   "auc_base": 0.561,
+   "avg": 83.8,
+   "n_recent": 1256,
+   "n_test": 1672,
+   "bottom20": 77.6,
+   "top20": 84.8
+  },
+  "beauty": {
+   "name": "피부·네일",
+   "rel": "none",
+   "auc": 0.526,
+   "auc_base": 0.521,
+   "avg": 71.2,
+   "n_recent": 1195,
+   "n_test": 1529,
+   "bottom20": 67.3,
+   "top20": 72.5
+  },
+  "gym": {
+   "name": "헬스·체육도장",
+   "rel": "none",
+   "auc": 0.456,
+   "auc_base": 0.486,
+   "avg": 90.6,
+   "n_recent": 318,
+   "n_test": 472,
+   "bottom20": 88.4,
+   "top20": 84.2
+  },
+  "karaoke": {
+   "name": "노래연습장",
+   "rel": "none",
+   "auc": null,
+   "auc_base": null,
+   "avg": 93.8,
+   "n_recent": 16,
+   "n_test": 29,
+   "bottom20": null,
+   "top20": null
+  },
+  "pcbang": {
+   "name": "PC방",
+   "rel": "ok",
+   "auc": 0.619,
+   "auc_base": 0.481,
+   "avg": 57.4,
+   "n_recent": 195,
+   "n_test": 289,
+   "bottom20": 46.6,
+   "top20": 74.1
+  },
+  "petgroom": {
+   "name": "반려동물 미용",
+   "rel": "none",
+   "auc": 0.4,
+   "auc_base": 0.445,
+   "avg": 78.8,
+   "n_recent": 184,
+   "n_test": 247,
+   "bottom20": 86.0,
+   "top20": 70.0
+  }
+ },
+ "model": {
+  "split": "2015~2019년 개업으로 학습 → 2020년~2023년 10월 개업으로 시험(미래 예측처럼)",
+  "n_train": 24403,
+  "n_test": 19235,
+  "auc_within_type_weighted": 0.569,
+  "auc_within_type_baseline": 0.515,
+  "quintile_actual_survival": [
+   38.5,
+   60.6,
+   65.6,
+   70.5,
+   77.9
+  ]
+ },
+ "public": {
+  "senior": {
+   "name": "동네 사랑방(경로당·쉼터)",
+   "r": 500,
+   "target": "age65p",
+   "op": "구청 임차 + 대한노인회 구지회·종합사회복지관 위탁"
+  },
+  "library": {
+   "name": "작은도서관·열람실",
+   "r": 1000,
+   "target": "pop",
+   "op": "구청 임차 + 작은도서관 운영 단체·주민자치회 위탁"
+  },
+  "childcare": {
+   "name": "초등 돌봄센터",
+   "r": 1000,
+   "target": "age5_14",
+   "op": "구청 임차 + 다함께돌봄센터 위탁 기관"
+  }
+ },
+ "rules": {
+  "biz_p": 0.6,
+  "biz_ratio": 1.1,
+  "pub_score": 50
+ },
+ "dtypes": {
+  "고령 1인·노후 주택형": 24,
+  "교외·농촌 고령형": 10,
+  "아파트 가족형": 40,
+  "영유아 신축 아파트형": 23,
+  "중장년 혼합 주거형": 44,
+  "청년 1인 가구형": 9
+ }
+}

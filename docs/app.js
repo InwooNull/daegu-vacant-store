@@ -1,22 +1,25 @@
-/* 빈 점포 한 칸 — 지도·카드
+/* 빈 점포 한 칸 — 지도·카드 (2판: 점 뭉치기, 간결한 카드)
    데이터: data/stores.json(점), data/cards/<구>.json(카드), data/meta.json(업종·정확도·규칙), data/dong.geojson, data/dong_summary.json, data/facilities.json
    팀원 모델로 바꿀 때는 같은 형식의 JSON만 덮어쓰면 됩니다(DATA_FORMAT.md). 서버 API로 바꿀 때는 loadJSON 한 곳만 고치면 됩니다. */
 (function () {
   'use strict';
   const VERDICT = ['biz', 'public', 'hold'];
-  const VERDICT_NAME = { biz: '창업 연계', public: '공공 활용', hold: '보류' };
+  const VNAME = { biz: '창업 연계', public: '공공 활용', hold: '보류' };
+  const VDESC = { biz: '버틸 업종이 있는 자리', public: '주민 시설이 모자란 자리', hold: '둘 다 기준 미달' };
   const COLOR = { biz: '#2f5fd0', public: '#1f8a5b', hold: '#9aa1ad' };
-  const REL_NAME = { ok: '예측 근거 있음', weak: '예측력 약함', none: '참고용 · 예측력 낮음' };
+  const REL_NAME = { ok: '판정에 사용', weak: '판정에 사용(약함)', none: '참고용' };
   const DTYPE_COLOR = {
     '고령 1인·노후 주택형': '#d9822b', '교외·농촌 고령형': '#a5794f', '중장년 혼합 주거형': '#c9b458',
     '아파트 가족형': '#7aa6c2', '영유아 신축 아파트형': '#5e9c86', '청년 1인 가구형': '#9a7fc1'
   };
   const FAC_STYLE = { senior: '#d9822b', library: '#7b5ea7', childcare: '#0f8b8d' };
+  const SEQ = ['#d7dbe2', '#b6c6ea', '#7f9ee0', '#2f5fd0', '#18307a'];
 
   const $ = (s) => document.querySelector(s);
   const fmt = (n) => n.toLocaleString('ko-KR');
   const pct = (x) => Math.round(x * 100) + '%';
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const dist = (m) => (m >= 1000 ? (m / 1000).toFixed(1) + 'km' : m + 'm');
 
   const DATA_BASE = 'data/';
   async function loadJSON(path) {
@@ -25,24 +28,29 @@
     return r.json();
   }
 
-  let meta, stores, typeKeys, map, renderer, markers = [], dongLayer, facLayers = {}, facData;
+  let meta, stores, typeKeys, map, cluster, dongLayer, facLayers = {}, facData, renderer;
   const cardCache = {};
-  const state = { verdicts: new Set([0, 1, 2]), gu: '', type: '' };
+  const state = { verdicts: new Set([0, 1, 2]), gu: '', type: '', lo: 0, hi: 100 };
 
-  // 업종 확률 색: 회색 → 파랑 (한 색상 계열)
-  const SEQ = ['#d7dbe2', '#b6c6ea', '#7f9ee0', '#2f5fd0', '#18307a'];
-  function seqColor(v, lo, hi) {
-    const t = Math.max(0, Math.min(1, (v - lo) / Math.max(1, hi - lo)));
-    return SEQ[Math.min(SEQ.length - 1, Math.floor(t * SEQ.length))];
+  function seqColor(v) {
+    const t = Math.max(0, Math.min(0.999, (v - state.lo) / Math.max(1, state.hi - state.lo)));
+    return SEQ[Math.floor(t * SEQ.length)];
   }
 
   async function init() {
-    map = L.map('map', { zoomControl: true, preferCanvas: true }).setView([35.8714, 128.6014], 12);
+    map = L.map('map', { preferCanvas: false }).setView([35.8714, 128.6014], 12);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> 기여자'
+      maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> 기여자'
     }).addTo(map);
     renderer = L.canvas({ padding: 0.3 });
+    cluster = L.markerClusterGroup({
+      chunkedLoading: true, maxClusterRadius: 56, showCoverageOnHover: false,
+      spiderfyOnMaxZoom: true, disableClusteringAtZoom: 18, iconCreateFunction: clusterIcon
+    });
+    map.addLayer(cluster);
+    const legend = L.control({ position: 'bottomleft' });
+    legend.onAdd = () => { const d = L.DomUtil.create('div', 'maplegend'); d.id = 'mapLegend'; return d; };
+    legend.addTo(map);
     try {
       [meta, stores] = await Promise.all([loadJSON('meta.json'), loadJSON('stores.json')]);
     } catch (e) {
@@ -51,43 +59,93 @@
     }
     typeKeys = Object.keys(meta.types);
     buildControls();
-    drawMarkers();
-    renderCounts();
+    redraw();
     $('#loading').hidden = true;
     buildMethod();
   }
 
+  /* ---------- 점 뭉치기 ---------- */
+  function clusterIcon(c) {
+    const ms = c.getAllChildMarkers(); const n = ms.length;
+    const size = n < 10 ? 34 : n < 100 ? 40 : n < 1000 ? 48 : 56;
+    let bg, cls = 'cl';
+    if (state.type) { // 업종 보기: 평균 확률 색
+      const avg = ms.reduce((a, m) => a + m.options.p, 0) / n;
+      bg = seqColor(avg); cls += ' seq';
+      const fg = SEQ.indexOf(bg) < 2 ? '#1d2330' : '#ffffff';  // 옅은 색 위엔 진한 글자
+      return L.divIcon({ html: `<div class="${cls}" style="width:${size}px;height:${size}px;background:${bg}"><span style="background:${bg};color:${fg}">${n >= 1000 ? (n / 1000).toFixed(1) + '천' : n}</span></div>`, className: '', iconSize: [size, size] });
+    }
+    const k = [0, 0, 0]; ms.forEach((m) => k[m.options.v]++);
+    const a = (k[0] / n) * 360, b = a + (k[1] / n) * 360;  // 테두리 고리 = 창업·공공·보류 비율
+    bg = `conic-gradient(${COLOR.biz} 0 ${a}deg, ${COLOR.public} ${a}deg ${b}deg, ${COLOR.hold} ${b}deg 360deg)`;
+    if (n >= 100) cls += ' big';
+    return L.divIcon({ html: `<div class="${cls}" style="width:${size}px;height:${size}px;background:${bg}" title="창업 ${k[0]} · 공공 ${k[1]} · 보류 ${k[2]}"><span>${n >= 1000 ? (n / 1000).toFixed(1) + '천' : n}</span></div>`, className: '', iconSize: [size, size] });
+  }
+
+  function visible(s) { return state.verdicts.has(s[4]) && (!state.gu || s[3] === state.gu); }
+
+  function redraw() {
+    const ti = state.type ? typeKeys.indexOf(state.type) : -1;
+    const vis = stores.filter(visible);
+    if (ti >= 0) {
+      const vals = vis.map((s) => s[5][ti]).sort((a, b) => a - b);
+      state.lo = vals[Math.floor(vals.length * 0.05)] || 0; state.hi = vals[Math.floor(vals.length * 0.95)] || 100;
+    }
+    const ms = vis.map((s) => {
+      const p = ti >= 0 ? s[5][ti] : 0;
+      const col = ti >= 0 ? seqColor(p) : COLOR[VERDICT[s[4]]];
+      const m = L.marker([s[1], s[2]], { icon: L.divIcon({ html: `<div class="pt" style="background:${col}"></div>`, className: '', iconSize: [12, 12] }), v: s[4], p, keyboard: false });
+      m.on('click', () => openCard(s));
+      if (ti >= 0) m.bindTooltip(`${meta.types[state.type].name} ${p}%`, { className: 'tip', direction: 'top', offset: [0, -6] });
+      return m;
+    });
+    cluster.clearLayers(); cluster.addLayers(ms);
+    renderCounts(); renderLegend();
+  }
+
+  function renderLegend() {
+    const el = $('#mapLegend'); if (!el) return;
+    if (state.type) {
+      el.innerHTML = `<b>${esc(meta.types[state.type].name)}</b> 3년 생존 확률<br><span style="display:inline-block;width:120px;height:8px;border-radius:4px;background:linear-gradient(90deg,${SEQ.join(',')})"></span><br>원 안 숫자 = 빈 점포 수 · 색 = 평균 확률`;
+    } else {
+      el.innerHTML = `<i style="background:${COLOR.biz}"></i>창업 연계 <i style="background:${COLOR.public};margin-left:8px"></i>공공 활용 <i style="background:${COLOR.hold};margin-left:8px"></i>보류<br>원 안 숫자 = 빈 점포 수 · 테두리 = 판정 비율`;
+    }
+  }
+
+  /* ---------- 왼쪽 패널 ---------- */
   function buildControls() {
+    $('#vfilter').innerHTML = VERDICT.map((v, i) => `<button type="button" class="vbtn ${v}" data-v="${i}" aria-pressed="true">
+      <span class="dot"></span><span class="nm">${VNAME[v]}<span class="ds">${VDESC[v]}</span></span><span class="n" id="n${i}">0</span></button>`).join('');
+    $('#vfilter').addEventListener('click', (e) => {
+      const b = e.target.closest('.vbtn'); if (!b) return;
+      const v = +b.dataset.v; const on = b.getAttribute('aria-pressed') === 'true';
+      if (on && state.verdicts.size === 1) return; // 하나는 남김
+      b.setAttribute('aria-pressed', String(!on));
+      on ? state.verdicts.delete(v) : state.verdicts.add(v);
+      redraw();
+    });
     const gus = [...new Set(stores.map((s) => s[3]))].sort();
     const gs = $('#guSelect');
     gus.forEach((g) => gs.insertAdjacentHTML('beforeend', `<option value="${esc(g)}">${esc(g)}</option>`));
-    gs.addEventListener('change', () => { state.gu = gs.value; drawMarkers(); renderCounts(); fitGu(); });
+    gs.addEventListener('change', () => { state.gu = gs.value; redraw(); fitGu(); });
 
     const ts = $('#typeSelect');
-    const order = { ok: 0, weak: 1, none: 2 };
-    typeKeys.slice().sort((a, b) => order[meta.types[a].rel] - order[meta.types[b].rel])
-      .forEach((t) => {
-        const ty = meta.types[t];
-        ts.insertAdjacentHTML('beforeend', `<option value="${t}">${esc(ty.name)}${ty.rel === 'none' ? ' (참고용)' : ty.rel === 'weak' ? ' (예측력 약함)' : ''}</option>`);
-      });
+    const groups = { ok: [], weak: [], none: [] };
+    typeKeys.forEach((t) => groups[meta.types[t].rel].push(t));
+    [['ok', '예측 근거 있음'], ['weak', '예측력 약함'], ['none', '참고용 (예측력 낮음)']].forEach(([k, lab]) => {
+      if (!groups[k].length) return;
+      ts.insertAdjacentHTML('beforeend', `<optgroup label="${lab}">${groups[k].map((t) => `<option value="${t}">${esc(meta.types[t].name)}</option>`).join('')}</optgroup>`);
+    });
     ts.addEventListener('change', () => {
       state.type = ts.value;
       $('#seqLegend').hidden = !state.type;
-      const w = $('#typeWarn');
-      if (state.type && meta.types[state.type].rel !== 'ok') {
-        const ty = meta.types[state.type];
+      const w = $('#typeWarn'); const ty = meta.types[state.type];
+      if (ty && ty.rel !== 'ok') {
         w.hidden = false;
-        w.textContent = ty.auc == null
-          ? `${ty.name}은 시험할 개업 건수가 적어 정확도를 재지 못했습니다. 참고로만 보세요.`
-          : `${ty.name}은 과거 데이터로 시험했을 때 가려내는 힘이 약했습니다(AUC ${ty.auc}). 참고로만 보세요.`;
+        w.textContent = ty.auc == null ? `${ty.name}은 시험할 개업 건수가 적어 정확도를 재지 못했습니다. 참고로만 보세요.`
+          : `${ty.name}은 과거 데이터로 시험했을 때 가려내는 힘이 약했습니다. 참고로만 보세요.`;
       } else w.hidden = true;
-      drawMarkers();
-    });
-
-    $('#verdictChips').addEventListener('change', (e) => {
-      const v = +e.target.value;
-      e.target.checked ? state.verdicts.add(v) : state.verdicts.delete(v);
-      drawMarkers(); renderCounts();
+      redraw();
     });
     $('#layerDong').addEventListener('change', (e) => toggleDong(e.target.checked));
     [['layerSenior', 'senior'], ['layerLibrary', 'library'], ['layerChild', 'childcare']].forEach(([id, k]) =>
@@ -97,44 +155,16 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#card').hidden) closeCard(); });
   }
 
-  function visible(s) { return state.verdicts.has(s[4]) && (!state.gu || s[3] === state.gu); }
-
-  function drawMarkers() {
-    markers.forEach((m) => m.remove()); markers = [];
-    const ti = state.type ? typeKeys.indexOf(state.type) : -1;
-    let lo = 0, hi = 100;
-    if (ti >= 0) { // 이 업종 확률의 5~95% 구간으로 색 범위
-      const vals = stores.filter(visible).map((s) => s[5][ti]).sort((a, b) => a - b);
-      lo = vals[Math.floor(vals.length * 0.05)] || 0; hi = vals[Math.floor(vals.length * 0.95)] || 100;
-    }
-    const z = map.getZoom();
-    const r = z >= 15 ? 5 : z >= 13 ? 3.5 : 2.5;
-    for (const s of stores) {
-      if (!visible(s)) continue;
-      const col = ti >= 0 ? seqColor(s[5][ti], lo, hi) : COLOR[VERDICT[s[4]]];
-      const m = L.circleMarker([s[1], s[2]], { renderer, radius: r, stroke: true, color: '#ffffff', weight: 0.8, fillColor: col, fillOpacity: 0.9 });
-      m.on('click', () => openCard(s));
-      if (ti >= 0) m.bindTooltip(`${meta.types[state.type].name} ${s[5][ti]}%`, { className: 'tip', direction: 'top' });
-      m.addTo(map); markers.push(m);
-    }
-  }
-  let lastZoomBand = null;
-  function zoomBand() { const z = map.getZoom(); return z >= 15 ? 2 : z >= 13 ? 1 : 0; }
-  function onZoom() { const b = zoomBand(); if (b !== lastZoomBand) { lastZoomBand = b; if (markers.length) drawMarkers(); } }
-
   function fitGu() {
-    const pts = stores.filter(visible).map((s) => [s[1], s[2]]);
+    const pts = stores.filter((s) => !state.gu || s[3] === state.gu).map((s) => [s[1], s[2]]);
     if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [30, 30], maxZoom: 14 });
   }
 
   function renderCounts() {
     const inGu = stores.filter((s) => !state.gu || s[3] === state.gu);
     const c = [0, 0, 0]; inGu.forEach((s) => c[s[4]]++);
-    $('#counts').innerHTML = `
-      <div class="count all"><b>${fmt(inGu.length)}</b><span>${state.gu ? esc(state.gu) : '대구'} 빈 점포(추정)</span></div>
-      <div class="count biz"><b>${fmt(c[0])}</b><span>창업 연계</span></div>
-      <div class="count public"><b>${fmt(c[1])}</b><span>공공 활용</span></div>
-      <div class="count hold"><b>${fmt(c[2])}</b><span>보류</span></div>`;
+    $('#total').innerHTML = `<b>${fmt(inGu.length)}</b>곳 · ${state.gu ? esc(state.gu) : '대구'} 빈 점포(추정)`;
+    c.forEach((n, i) => { $('#n' + i).textContent = fmt(n); });
   }
 
   async function toggleDong(on) {
@@ -143,13 +173,13 @@
       const [gj, sm] = await Promise.all([loadJSON('dong.geojson'), loadJSON('dong_summary.json')]);
       const by = Object.fromEntries(sm.map((d) => [d.code, d]));
       dongLayer = L.geoJSON(gj, {
-        style: (f) => ({ color: '#ffffff', weight: 1, fillColor: DTYPE_COLOR[(by[f.properties.code] || {}).dtype] || '#ccc', fillOpacity: 0.32 }),
+        style: (f) => ({ color: '#ffffff', weight: 1, fillColor: DTYPE_COLOR[(by[f.properties.code] || {}).dtype] || '#ccc', fillOpacity: 0.3 }),
         onEachFeature: (f, l) => {
           const d = by[f.properties.code]; if (!d) return;
           l.bindTooltip(`<b>${esc(d.name)}</b> · ${esc(d.dtype)}<br>65세 이상 ${pct(d.r65)} · 20~39세 ${pct(d.r2039)} · 1인 가구 ${pct(d.rhh1)}<br>빈 점포(추정) ${fmt(d.n)}곳`, { className: 'tip', sticky: true });
         }
       });
-      $('#dtypeLegend').innerHTML = Object.entries(DTYPE_COLOR).map(([k, c]) => `<div><i style="background:${c}"></i>${k} (${meta.dtypes[k] || 0}개 동)</div>`).join('');
+      $('#dtypeLegend').innerHTML = Object.entries(DTYPE_COLOR).map(([k, c]) => `<div><i style="background:${c}"></i>${k}</div>`).join('');
     }
     dongLayer.addTo(map); dongLayer.bringToBack(); $('#dtypeLegend').hidden = false;
   }
@@ -159,87 +189,101 @@
     if (!on) { if (facLayers[k]) facLayers[k].remove(); return; }
     if (!facLayers[k]) {
       facLayers[k] = L.layerGroup((facData[k] || []).map(([nm, lon, lat]) =>
-        L.circleMarker([lat, lon], { renderer, radius: 4, color: FAC_STYLE[k], weight: 2, fillColor: '#fff', fillOpacity: 1 }).bindTooltip(esc(nm), { className: 'tip' })));
+        L.circleMarker([lat, lon], { renderer, radius: 5, color: FAC_STYLE[k], weight: 2.5, fillColor: '#fff', fillOpacity: 1 }).bindTooltip(esc(nm), { className: 'tip' })));
     }
     facLayers[k].addTo(map);
   }
 
+  /* ---------- 카드 ---------- */
   let selected;
   async function openCard(s) {
     if (selected) selected.remove();
-    selected = L.circleMarker([s[1], s[2]], { renderer, radius: 9, color: '#1d2330', weight: 2.5, fill: false }).addTo(map);
+    selected = L.circleMarker([s[1], s[2]], { renderer, radius: 11, color: '#1d2330', weight: 3, fill: false, interactive: false }).addTo(map);
     const body = $('#cardBody');
-    $('#card').hidden = false; body.innerHTML = '<p class="meta">불러오는 중</p>';
+    $('#card').hidden = false; body.innerHTML = '<p class="hint">불러오는 중</p>';
     try {
       if (!cardCache[s[3]]) cardCache[s[3]] = await loadJSON('cards/' + encodeURIComponent(s[3]) + '.json');
-    } catch (e) { body.innerHTML = '<p class="meta">카드를 불러오지 못했습니다. 다시 눌러 주세요.</p>'; return; }
-    const c = cardCache[s[3]][s[0]];
-    body.innerHTML = cardHTML(s[0], c);
-    const more = body.querySelector('.more');
-    if (more) more.addEventListener('click', () => { body.querySelector('.bars.rest').hidden = false; more.remove(); });
+    } catch (e) { body.innerHTML = '<p class="hint">카드를 불러오지 못했습니다. 다시 눌러 주세요.</p>'; return; }
+    body.innerHTML = cardHTML(s[0], cardCache[s[3]][s[0]]);
+    $('#card').scrollTop = 0;
     setTimeout(() => map.invalidateSize(), 0);
   }
   function closeCard() { $('#card').hidden = true; if (selected) { selected.remove(); selected = null; } setTimeout(() => map.invalidateSize(), 0); }
 
-  function verdictSentence(c) {
+  function headline(c) {
     const R = meta.rules;
     if (c.v === 'biz') {
       const t = meta.types[c.top]; const p = c.biz.find((b) => b[0] === c.top)[1];
-      return `<b>${esc(t.name)}</b>을(를) 열면 3년 버틸 확률이 <b>${pct(p)}</b>로, 대구 최근 평균 ${t.avg}%보다 높습니다. 민간 창업으로 연결할 후보입니다.`;
+      return { title: `${t.name} 창업 후보`, text: `3년 버틸 확률 <b>${pct(p)}</b> · 대구 평균 ${Math.round(t.avg)}%보다 높습니다.` };
     }
     if (c.v === 'public') {
-      const k = c.pub[0][0];
-      return `예측력이 있는 업종 중 대구 평균보다 확실히 나은 업종이 없고, 주변에 <b>${esc(meta.public[k].name)}</b>이(가) 모자랍니다. 구청 임차로 공공 활용을 검토할 후보입니다.`;
+      const sp = meta.public[c.pub[0][0]];
+      return { title: `${sp.name} 후보`, text: `대구 평균보다 확실히 잘될 업종이 없고, 주변에 이 시설이 모자랍니다. 구청 임차를 검토할 자리입니다.` };
     }
-    const why = [];
-    if (!(c.fl === '' || /^(1|2)$/.test(c.fl))) why.push('층이 높거나 지하라 생활시설 접근성이 떨어집니다');
-    return `창업·공공 어느 쪽도 기준(창업: 3년 버틸 확률 ${Math.round(R.biz_p * 100)}% 이상이면서 대구 평균의 ${R.biz_ratio}배 이상 / 공공: 결손 점수 ${R.pub_score}점 이상)을 넘지 못했습니다.${why.length ? ' ' + why.join(', ') + '.' : ''} 임시 활용이나 시장 회복을 지켜볼 자리입니다.`;
+    const high = c.fl && !/^(1|2)$/.test(c.fl);
+    return { title: '지켜볼 자리', text: `창업 기준(확률 ${Math.round(R.biz_p * 100)}% 이상, 대구 평균의 ${R.biz_ratio}배 이상)과 공공 기준(결손 ${R.pub_score}점 이상${high ? ', 1~2층' : ''})을 넘지 못했습니다.` };
   }
 
   function bar(b) {
-    const t = meta.types[b[0]]; const cls = t.rel === 'none' ? 'none' : '';
-    return `<div class="bar ${cls}"><span class="nm" title="${esc(t.name)}">${esc(t.name)}</span>
-      <span class="track"><span class="fill" style="width:${Math.round(b[1] * 100)}%"></span><span class="avg" style="left:${t.avg}%" title="대구 최근 평균 ${t.avg}%"></span></span>
-      <span class="val">${pct(b[1])}</span></div>`;
+    const t = meta.types[b[0]]; const none = t.rel === 'none';
+    const diff = Math.round(b[1] * 100 - t.avg);
+    return `<div class="bar ${none ? 'none' : ''}"><span class="nm">${esc(t.name)}</span>
+      <span class="val">${pct(b[1])}<small>평균 ${diff >= 0 ? '+' : ''}${diff}%p</small></span>
+      <span class="track"><span class="fill" style="width:${Math.round(b[1] * 100)}%"></span><span class="avg" style="left:${t.avg}%"></span></span></div>`;
   }
 
   function cardHTML(id, c) {
-    const usable = c.biz.filter((b) => meta.types[b[0]].rel !== 'none');
-    const rest = c.biz.filter((b) => meta.types[b[0]].rel === 'none');
+    const h = headline(c);
+    const usable = c.biz.filter((b) => meta.types[b[0]].rel !== 'none')
+      .sort((a, b) => (b[1] * 100 - meta.types[b[0]].avg) - (a[1] * 100 - meta.types[a[0]].avg));
+    const top3 = usable.slice(0, 3);
+    const others = c.biz.filter((b) => !top3.includes(b));
+    const P = c.pub[0]; const sp = meta.public[P[0]]; const has = P[1] > 0;
     const floor = c.fl ? `${esc(c.fl)}층` : '층 정보 없음';
-    const pubs = c.pub.map((p, i) => {
-      const sp = meta.public[p[0]]; const zero = p[1] <= 0;
-      return `<div class="pub ${i === 0 && c.v === 'public' ? 'top' : ''}">
-        <div class="row"><b>${esc(sp.name)}</b><span class="score ${zero ? 'zero' : ''}">${zero ? '충분' : '결손 ' + Math.round(p[1]) + '점'}</span></div>
-        <p>도보 ${sp.r >= 1000 ? sp.r / 1000 + 'km' : sp.r + 'm'} 안 ${p[2]}곳 · 가장 가까운 곳 ${p[3] >= 1000 ? (p[3] / 1000).toFixed(1) + 'km' : p[3] + 'm'} · 대상 인구 약 ${fmt(p[4])}명 · 대구 평균 대비 ${p[5] >= 10 ? '10배 이상' : p[5].toFixed(1) + '배'}</p>
-        ${i === 0 && !zero ? `<p class="op">운영 구조(제안): ${esc(sp.op)}</p>` : ''}</div>`;
-    }).join('');
     return `
-      <span class="verdict ${c.v}">${VERDICT_NAME[c.v]}</span>
-      <h3 class="addr">${esc(c.addr)}${c.bld ? ' · ' + esc(c.bld) : ''}</h3>
-      <p class="meta">${esc(c.gu)} ${esc(c.dong)} · ${floor} · 동네 유형 <b>${esc(c.dtype)}</b></p>
-      <p class="meta">마지막 업소: ${esc(c.prev)} · ${String(c.seen).slice(0, 4)}년 ${+String(c.seen).slice(4)}월 상가정보까지 확인
-        ${c.permit ? '<span class="badge ok">같은 지번 인허가 폐업 확인</span>' : '<span class="badge warn">현장 확인 필요</span>'}</p>
-      <p class="why-v">${verdictSentence(c)}</p>
+      <div class="head ${c.v}">
+        <div class="lab">${VNAME[c.v]}</div>
+        <h3>${esc(h.title)}</h3>
+        <p>${h.text}</p>
+      </div>
+      <div class="place">
+        <div class="addr">${esc(c.addr)}${c.bld ? ' · ' + esc(c.bld) : ''}</div>
+        <div class="tags">
+          <span class="tag">${esc(c.dong)}</span><span class="tag">${floor}</span><span class="tag">${esc(c.dtype)}</span>
+          <span class="tag">이전 업종 ${esc(c.prev)}</span>
+          ${c.permit ? '<span class="tag ok">인허가 폐업 확인</span>' : '<span class="tag warn">현장 확인 필요</span>'}
+        </div>
+      </div>
 
       <section class="sec">
-        <h4>가게를 연다면 <small>3년 뒤에도 영업 중일 확률</small></h4>
-        <p class="lead">세로선은 그 업종의 대구 최근 평균(2021~2023년 개업)입니다.</p>
-        <div class="bars">${usable.map(bar).join('')}</div>
-        ${c.why.length ? `<ul class="why">${c.why.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
-        <button class="more" type="button">참고용 업종 ${rest.length}개 더 보기</button>
-        <div class="bars rest" hidden style="margin-top:10px">${rest.map(bar).join('')}
-          <p class="lead" style="margin:4px 0 0">회색은 과거 데이터로 시험했을 때 가려내는 힘이 약했던 업종입니다. 판정에 쓰지 않았습니다.</p></div>
+        <h4>가게를 연다면</h4>
+        <p class="lead">3년 뒤에도 영업 중일 확률 · 세로선은 대구 평균</p>
+        <div class="bars">${top3.map(bar).join('')}</div>
+        ${c.why.length && c.top ? `<ul class="why"><b style="margin-left:-16px;display:block;color:var(--ink)">${esc(meta.types[c.top].name)} 근거</b>${c.why.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
+        <details class="all"><summary>다른 업종 ${others.length}개 보기</summary>
+          <div class="bars">${others.map(bar).join('')}</div>
+          <p class="lead">회색 막대는 예측력이 낮아 판정에 쓰지 않은 업종입니다.</p></details>
       </section>
 
       <section class="sec">
-        <h4>주민에게 모자란 시설 <small>생활SOC 도보 기준</small></h4>
-        <p class="lead">반경 안 시설 수를 대상 인구로 나눠 대구 평균과 비교했습니다.</p>
-        ${pubs}
+        <h4>주민에게 모자란 시설</h4>
+        <p class="lead">걸어서 갈 거리 안 시설을 대상 인구와 대구 평균에 비교</p>
+        <div class="pub-main ${has ? '' : 'none'}">
+          <div class="row"><b>${esc(sp.name)}</b><span class="score">${has ? '결손 ' + Math.round(P[1]) + '점' : '충분'}</span></div>
+          <dl class="facts">
+            <div><dt>도보 ${dist(sp.r)} 안</dt><dd>${P[2]}곳</dd></div>
+            <div><dt>가장 가까운 곳</dt><dd>${dist(P[3])}</dd></div>
+            <div><dt>대상 인구(추정)</dt><dd>${fmt(P[4])}명</dd></div>
+            <div><dt>대구 평균 대비</dt><dd>${P[5] >= 10 ? '10배 이상' : P[5].toFixed(1) + '배'}</dd></div>
+          </dl>
+          ${has ? `<p class="op">운영(제안): ${esc(sp.op)}</p>` : ''}
+        </div>
+        <div class="pub-rest">${c.pub.slice(1).map((p) => `<div><span>${esc(meta.public[p[0]].name)}</span><span>${p[1] > 0 ? '결손 ' + Math.round(p[1]) + '점' : '충분'}</span></div>`).join('')}</div>
       </section>
-      <p class="note">자리 ${esc(id)} · 판정은 참고 자료이고 최종 결정은 구청 담당자가 합니다. 확률은 인허가 개업·폐업 기록으로 학습한 값이며 매출을 뜻하지 않습니다.</p>`;
+      <p class="note">판정은 참고 자료이고 결정은 구청이 합니다. 확률은 인허가 개업·폐업 기록으로 학습한 값으로 매출을 뜻하지 않습니다. (${esc(id)})</p>`;
   }
 
+  /* ---------- 계산 방법 ---------- */
   function buildMethod() {
     const m = meta.model;
     const rows = typeKeys.map((t) => {
@@ -249,46 +293,35 @@
     const vc = meta.verdict_counts;
     $('#methodBody').innerHTML = `
       <h2>계산 방법과 정확도</h2>
-      <p>모든 숫자는 공개 데이터로 직접 계산했습니다. 계산 시각 ${esc(meta.generated)}.</p>
-
+      <p>모든 숫자는 공공데이터포털 공개 파일로 직접 계산했습니다(계산 ${esc(meta.generated)}). 이전 화면은 <a href="v1/">1판</a>에서 볼 수 있습니다.</p>
       <h3>1. 빈 점포(추정) ${fmt(meta.n_stores)}곳</h3>
       <ul>
-        <li>소상공인시장진흥공단 상가정보 분기 파일(2025년 10월~2026년 6월)에 있었는데 2026년 9월 파일에서 사라진 업소의 자리입니다.</li>
-        <li>같은 건물·같은 층에 새 업소가 들어와 업소 수가 줄지 않았으면 빼고, 같은 상호·업종이 같은 구에 다시 보이면 이전한 것으로 보고 뺐습니다.</li>
-        <li>그중 ${fmt(meta.permit_confirmed)}곳은 같은 지번에 2025년 7월 이후 인허가 폐업 기록이 있습니다. 나머지는 현장·건축물대장 확인이 필요합니다.</li>
+        <li>상가정보 분기 파일(2025년 10월~2026년 6월)에 있었는데 2026년 9월 파일에서 사라진 업소의 자리입니다.</li>
+        <li>같은 건물·층에 새 업소가 들어와 업소 수가 줄지 않았으면 빼고, 같은 상호·업종이 같은 구에 다시 보이면 이전으로 보고 뺐습니다.</li>
+        <li>${fmt(meta.permit_confirmed)}곳은 같은 지번에 2025년 7월 이후 인허가 폐업 기록이 있습니다. 나머지는 현장 확인이 필요합니다.</li>
       </ul>
-
       <h3>2. 가게를 연다면 — 3년 생존 확률</h3>
       <ul>
-        <li>행정안전부 지방행정 인허가 15개 업종의 개업·폐업일로, 2015년~2023년 10월에 문 연 가게가 3년 뒤에도 영업 중이었는지를 학습했습니다(그래디언트 부스팅, LightGBM). 행사·팝업처럼 같은 지번에 한 달 새 개업이 몰린 기록은 뺐습니다.</li>
-        <li>자리 정보: 반경 100·300·500m의 같은 업종·전체 업소 수, 최근 1년 개업·폐업, 같은 업종의 과거 3년 생존율, 같은 지번의 과거 폐업 횟수, 버스 정류소·노선 수, 행정동 인구 구성(SGIS 2024).</li>
-        <li><b>검증:</b> ${esc(m.split)}. 업종 안에서 가려내는 힘(AUC, 0.5는 동전 던지기)은 평균 ${m.auc_within_type_weighted}로, 구·업종 평균만 쓰는 방식(${m.auc_within_type_baseline})보다 조금 낫습니다. 확률은 2021~2023년 개업의 실제 생존율에 맞춰 보정했습니다.</li>
+        <li>인허가 15개 업종의 개업·폐업일로, 2015년~2023년 10월에 문 연 가게가 3년 뒤에도 영업 중이었는지를 학습했습니다(LightGBM). 행사·팝업처럼 같은 지번에 한 달 새 개업이 몰린 기록은 뺐습니다.</li>
+        <li>자리 정보: 반경 100·300·500m 같은 업종·전체 업소 수, 최근 1년 개업·폐업, 같은 업종의 과거 3년 생존율, 같은 지번 과거 폐업, 버스 정류소·노선, 행정동 인구 구성.</li>
+        <li><b>검증:</b> ${esc(m.split)}. 업종 안에서 가려내는 힘(AUC, 0.5는 동전 던지기)은 평균 ${m.auc_within_type_weighted}로, 구·업종 평균만 쓰는 방식(${m.auc_within_type_baseline})보다 조금 낫습니다.</li>
       </ul>
-      <table><thead><tr><th>업종</th><th>판정 사용</th><th class="num">AUC</th><th class="num">기준선</th><th class="num">예측 하위→상위 20% 실제 생존</th><th class="num">대구 평균</th><th class="num">시험 건수</th></tr></thead><tbody>${rows}</tbody></table>
-      <p>AUC 0.58 이상이면서 기준선보다 0.03 이상 나은 업종을 '예측 근거 있음', 0.54 이상이면서 기준선보다 나은 업종을 '예측력 약함'으로 두고 이 두 무리만 판정에 썼습니다.</p>
-
-      <h3>3. 주민에게 모자란 시설 — 결손 점수</h3>
+      <div class="tablewrap"><table><thead><tr><th>업종</th><th>쓰임</th><th class="num">AUC</th><th class="num">기준선</th><th class="num">예측 하위→상위 20% 실제 생존</th><th class="num">대구 평균</th><th class="num">시험 건수</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <h3>3. 주민에게 모자란 시설</h3>
       <ul>
-        <li>경로당(대구시 목록 + 표준데이터, 주소로 좌표를 붙임), 도서관, 지역아동센터·다함께돌봄센터의 위치를 썼습니다. 반경은 생활SOC 최저기준의 도보 시간을 거리로 바꾼 값입니다(경로당 500m, 도서관·돌봄 1km).</li>
-        <li>반경 안 시설 수 ÷ 대상 인구(65세 이상, 전체, 5~14세)를 대구 평균과 비교한 부족분, 최저기준 거리 초과, 대상 인구 크기를 합쳐 0~100점으로 냈습니다.</li>
-        <li>학교 돌봄교실, 사설 시설, 표준데이터에 없는 경로당은 빠져 있어 실제보다 결손이 크게 나올 수 있습니다.</li>
+        <li>경로당, 도서관, 지역아동센터·다함께돌봄센터 위치를 썼습니다. 반경은 생활SOC 최저기준의 도보 시간을 거리로 바꾼 값입니다(경로당 500m, 도서관·돌봄 1km).</li>
+        <li>반경 안 시설 수 ÷ 대상 인구를 대구 평균과 비교한 부족분, 최저기준 거리 초과, 대상 인구 크기를 합쳐 0~100점으로 냈습니다.</li>
+        <li>학교 돌봄교실·사설 시설과 일부 경로당 좌표가 빠져 결손이 실제보다 크게 나올 수 있습니다.</li>
       </ul>
-
-      <h3>4. 동네 유형</h3>
-      <p>대구 150개 행정동을 65세 이상·20~39세·0~4세 비율, 1인 가구 비율, 아파트 비율, 인구 밀도로 K-평균 군집 6개로 나눴습니다.</p>
-
-      <h3>5. 판정 규칙</h3>
+      <h3>4. 판정 규칙</h3>
       <ul>
-        <li><b>창업 연계 (${fmt(vc.biz || 0)}곳):</b> 판정에 쓰는 업종 중 하나라도 3년 버틸 확률 ${Math.round(meta.rules.biz_p * 100)}% 이상이면서 대구 평균의 ${meta.rules.biz_ratio}배 이상</li>
-        <li><b>공공 활용 (${fmt(vc.public || 0)}곳):</b> 창업 기준을 못 넘고, 결손 점수 최고값 ${meta.rules.pub_score}점 이상, 1~2층(또는 층 정보 없음)</li>
-        <li><b>보류 (${fmt(vc.hold || 0)}곳):</b> 둘 다 아님</li>
+        <li><b>창업 연계 ${fmt(vc.biz || 0)}곳:</b> 판정에 쓰는 업종 중 하나라도 확률 ${Math.round(meta.rules.biz_p * 100)}% 이상이면서 대구 평균의 ${meta.rules.biz_ratio}배 이상</li>
+        <li><b>공공 활용 ${fmt(vc.public || 0)}곳:</b> 창업 기준 미달, 결손 점수 ${meta.rules.pub_score}점 이상, 1~2층(또는 층 정보 없음)</li>
+        <li><b>보류 ${fmt(vc.hold || 0)}곳:</b> 둘 다 아님</li>
       </ul>
-
       <h3>데이터</h3>
-      <p>소상공인시장진흥공단 상가(상권)정보(2025-10~2026-09), 행정안전부 지방행정 인허가(2026-11-25 내려받음), 국가데이터처 SGIS 행정구역 통계(2024)·행정동 경계(2025-2Q), 대구광역시 경로당(2026-06)·다함께돌봄센터(2026-10)·시내버스 정류소(2026-09), 행정안전부 표준데이터(도서관·경로당·지역아동센터). 모두 공공데이터포털 공개 파일입니다. 개인 단위 정보는 쓰지 않았습니다.</p>`;
+      <p>소상공인시장진흥공단 상가(상권)정보, 행정안전부 지방행정 인허가, 국가데이터처 SGIS 행정구역 통계(2024)·행정동 경계, 대구광역시 경로당·다함께돌봄센터·시내버스 정류소, 행정안전부 표준데이터(도서관·경로당·지역아동센터). 개인 단위 정보는 쓰지 않았습니다.</p>`;
   }
 
-  window.addEventListener('DOMContentLoaded', () => {
-    init().then(() => { if (map) { lastZoomBand = zoomBand(); map.on('zoomend', onZoom); } });
-  });
+  window.addEventListener('DOMContentLoaded', init);
 })();
