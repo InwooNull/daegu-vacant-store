@@ -281,7 +281,7 @@
     const vc = meta.verdict_counts;
     $('#methodBody').innerHTML = `
       <h2>계산 방법과 정확도</h2>
-      <p>모든 숫자는 공공데이터포털 공개 파일로 직접 계산했습니다(계산 ${esc(meta.generated)}). 이전 화면은 <a href="v1/">1판</a>에서 볼 수 있습니다.</p>
+      <p>모든 숫자는 공공데이터포털 공개 파일로 직접 계산했습니다(계산 ${esc(meta.generated)}).</p>
       <h3>1. 빈 점포(추정) ${fmt(meta.n_stores)}곳</h3>
       <ul>
         <li>상가정보 분기 파일(2025년 10월~2026년 6월)에 있었는데 2026년 9월 파일에서 사라진 업소의 자리입니다.</li>
