@@ -24,6 +24,7 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const eul = (w) => { const c = w.charCodeAt(w.length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? '을' : '를'; };
   const eun = (w) => { const c = w.charCodeAt(w.length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? '은' : '는'; };
+  const times = (p, avg) => (p * 100 / avg).toFixed(1).replace(/\.0$/, '') + '배';  // 대구 평균의 몇 배
   const dist = (m) => (m >= 1000 ? (m / 1000).toFixed(1) + 'km' : m + 'm');
 
   const DATA_BASE = '../data/';
@@ -306,7 +307,7 @@
   function headline(c) {
     if (c.v === 'biz') {
       const t = meta.types[c.top]; const p = c.biz.find((b) => b[0] === c.top)[1];
-      return { title: `${t.name} 하기 좋은 자리`, text: `이 자리에 ${t.name}${eul(t.name)} 열면 3년 뒤에도 영업 중일 확률이 <b>${pct(p)}</b>로, 대구 평균(${Math.round(t.avg)}%)보다 높습니다.` };
+      return { title: `${t.name} 하기 좋은 자리 — 대구 평균의 ${times(p, t.avg)}`, text: `이 자리에 ${t.name}${eul(t.name)} 열면 3년 뒤에도 영업 중일 확률이 <b>${pct(p)}</b>로, 대구 빈 점포 평균(${Math.round(t.avg)}%)의 <b>${times(p, t.avg)}</b>입니다. 어디서 해도 잘 되는 업종보다, 이 자리라서 유리한 업종을 먼저 보여 드립니다.` };
     }
     if (c.v === 'public') {
       const sp = meta.public[c.pub[0][0]];
@@ -319,7 +320,7 @@
   function bar(b) {
     const t = meta.types[b[0]];
     return `<div class="bar"><span class="nm">${esc(t.name)}</span>
-      <span class="val">${pct(b[1])}<small>대구 평균 ${Math.round(t.avg)}%</small></span>
+      <span class="val">${pct(b[1])}<small>대구 평균 ${Math.round(t.avg)}% · <b class="x">평균의 ${times(b[1], t.avg)}</b></small></span>
       <span class="track"><span class="fill" style="width:${Math.round(b[1] * 100)}%"></span><span class="avg" style="left:${t.avg}%"></span></span></div>`;
   }
 
@@ -504,7 +505,7 @@
     return `
       <section class="sec">
         <h4>가게를 연다면</h4>
-        <p class="lead">3년 뒤에도 영업 중일 확률 · 세로선은 대구 평균</p>
+        <p class="lead">이 자리만의 장점이 큰 순서(대구 평균보다 몇 배 높은지) · 막대는 3년 뒤에도 영업 중일 확률, 세로선은 대구 평균</p>
         <div class="bars">${top3.map(bar).join('')}</div>
         ${bans.length ? `<p class="sub2">집주인이 사절한 ${bans.map(esc).join('·')}${eun(bans[bans.length - 1])} 추천에서 뺐습니다.</p>` : ''}
         ${c.why.length && c.top ? `<ul class="why"><b style="margin-left:-16px;display:block;color:var(--ink)">${esc(meta.types[c.top].name)} 근거</b>${c.why.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}

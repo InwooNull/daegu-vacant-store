@@ -213,3 +213,67 @@ td.num, th.num { text-align: right; }
 .hours { display: flex; align-items: flex-end; gap: 2px; height: 38px; margin-top: 8px; }
 .hours i { flex: 1; background: #9fd0b6; border-radius: 2px 2px 0 0; }
 .hours-ax { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+
+/* 4판: 동네 카드 · 목록 */
+.listbtn, .csv, .dongbtn { font: inherit; font-size: 14px; font-weight: 600; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; }
+.listbtn:hover, .csv:hover, .dongbtn:hover { background: var(--bg); }
+select:disabled { color: var(--ink-3); background: var(--bg); }
+.dongbtn { margin-top: 12px; width: 100%; font-size: 13px; border-width: 1px; }
+.csv { width: 100%; margin-top: 14px; }
+.head.dong { background: #f3eee4; } .head.dong .lab { color: #8a6a2f; }
+.head.list { background: var(--bg); } .head.list .lab { color: var(--ink-2); }
+.head.dong h3, .head.list h3 { font-size: 19px; }
+.vbar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--bg); }
+.vbar i { display: block; height: 100%; }
+.vleg { display: flex; gap: 12px; font-size: 12px; color: var(--ink-2); margin-top: 6px; }
+.ind { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 14px; }
+.ind li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.ind li span:last-child { color: var(--ink-2); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.ind b { margin-left: 6px; font-weight: 700; }
+.ind b.lo { color: var(--public); } .ind b.hi { color: var(--warn); }
+.h5 { margin: 16px 0 6px; font-size: 14px; } .h5 small { font-weight: 400; color: var(--ink-3); font-size: 12px; margin-left: 4px; }
+.rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; counter-reset: r; }
+.rows.num li { counter-increment: r; display: grid; grid-template-columns: 26px 1fr; align-items: center; }
+.rows.num li::before { content: counter(r); font-size: 13px; font-weight: 700; color: var(--ink-3); text-align: center; }
+.rowbtn { width: 100%; text-align: left; font: inherit; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; cursor: pointer; display: grid; gap: 2px; }
+.rowbtn:hover { border-color: var(--ink-3); background: var(--bg); }
+.rowbtn .ra { font-size: 14px; font-weight: 500; }
+.rowbtn .rb { font-size: 12px; color: var(--ink-2); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 16px 0 12px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button { font: inherit; font-size: 14px; padding: 9px; border: 0; background: var(--paper); cursor: pointer; color: var(--ink-2); }
+.seg button[aria-selected="true"] { background: var(--ink); color: #fff; font-weight: 600; }
+.rowbtn .cnt { font-size: 11px; color: var(--warn); font-weight: 600; margin-left: 4px; }
+
+/* 5판: 찾기 · 집주인 의견 */
+.finder { display: grid; gap: 10px; padding: 14px; border: 1.5px solid var(--biz); border-radius: var(--r); background: var(--biz-soft); }
+.finder .field > span { font-weight: 700; color: var(--ink); }
+#findBox { display: grid; gap: 8px; }
+#findBox[hidden] { display: none; }
+.vfilter.dim { opacity: .45; pointer-events: none; }
+.rows .ra small { display: block; color: var(--ink-3); font-size: 12px; font-weight: 400; }
+.tag.no { background: #fde8e8; color: #a3261f; border-color: #f4c4c1; }
+.ll-ban { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.ll-memo { margin: 6px 0; padding: 8px 10px; background: var(--bg); border-radius: 8px; color: var(--ink-2); font-size: 14px; }
+.llform { margin-top: 8px; }
+.llform summary { cursor: pointer; font-weight: 600; color: var(--biz); font-size: 14px; }
+.llchecks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin: 8px 0; font-size: 14px; }
+.llchecks label { display: flex; gap: 6px; align-items: center; }
+.llform input[type=number], .llform input[type=text] { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.llbtns { display: flex; gap: 8px; margin-top: 8px; }
+.warnline { margin: 6px 0; padding: 6px 10px; border-radius: 8px; background: #fde8e8; color: #a3261f; font-size: 14px; }
+
+/* 5판: 적정 월세 */
+.rinputs { display: grid; grid-template-columns: 1fr 110px; gap: 8px; margin: 8px 0; }
+.rinputs input, .rinputs select { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: var(--paper); }
+.rinputs small { color: var(--ink-3); font-weight: 400; font-size: 11px; }
+.rverdict { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; margin: 6px 0 10px; font-size: 14px; }
+.rverdict b { font-size: 16px; }
+.rverdict.good { background: var(--public-soft); } .rverdict.mid { background: var(--warn-soft); } .rverdict.bad { background: #fde8e8; }
+.rlines { display: grid; gap: 6px; }
+.rline { display: grid; grid-template-columns: 118px 1fr 74px; gap: 8px; align-items: center; font-size: 13px; }
+.rline b { text-align: right; font-variant-numeric: tabular-nums; }
+.rtrack { height: 8px; background: var(--hold-soft); border-radius: 4px; overflow: hidden; }
+.rtrack span { display: block; height: 100%; border-radius: 4px; background: var(--ink-3); }
+.rline.max .rtrack span { background: var(--biz); } .rline.mk .rtrack span { background: var(--warn); } .rline.ll .rtrack span { background: #a3261f; }
+
+.bar .val .x { color: var(--biz); font-weight: 700; }

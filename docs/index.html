@@ -7,7 +7,7 @@
 <meta name="description" content="대구 빈 점포(추정)마다 창업하면 3년 버틸 확률과 주민에게 모자란 생활시설을 함께 보여 줍니다. 공공데이터로 계산했습니다.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=5.1">
 </head>
 <body>
 <header class="top">
@@ -24,19 +24,30 @@
 <main class="layout">
   <aside class="panel" id="panel">
     <p class="total" id="total"></p>
+    <section class="finder" id="finder">
+      <label class="field">
+        <span>하고 싶은 업종·시설로 찾기</span>
+        <select id="typeSelect" aria-label="업종·시설 선택"><option value="">고르지 않음 (판정 색)</option></select>
+      </label>
+      <div id="findBox" hidden>
+        <label class="toggle"><input type="checkbox" id="fitOnly" checked><span>잘 맞는 자리만 보기</span></label>
+        <p class="hint" id="fitRule"></p>
+        <div class="legend-seq" id="seqLegend"><span>낮음</span><i></i><span>높음</span></div>
+        <button type="button" class="listbtn" id="openFind">잘 맞는 자리 순위 보기</button>
+      </div>
+    </section>
+
     <div class="vfilter" id="vfilter" role="group" aria-label="판정으로 거르기"></div>
 
     <label class="field">
       <span>지역</span>
       <select id="guSelect"><option value="">대구 전체</option></select>
     </label>
-
-    <details class="more-opts" id="typeBox">
-      <summary>색으로 보기</summary>
-      <p class="hint">업종을 고르면 그 가게가 3년 버틸 확률, 공공시설을 고르면 그 시설이 얼마나 부족한지로 색을 칠합니다.</p>
-      <select id="typeSelect" aria-label="업종 선택"><option value="">판정 색 (기본)</option></select>
-      <div class="legend-seq" id="seqLegend" hidden><span>낮음</span><i></i><span>높음</span></div>
-    </details>
+    <label class="field">
+      <span>동네</span>
+      <select id="dongSelect" disabled><option value="">구를 먼저 고르세요</option></select>
+    </label>
+    <button type="button" class="listbtn" id="openList">구청용 우선순위 목록</button>
 
     <details class="more-opts">
       <summary>지도에 겹쳐 보기</summary>
@@ -69,6 +80,6 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=5.1"></script>
 </body>
 </html>
