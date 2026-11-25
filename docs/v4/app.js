@@ -246,7 +246,7 @@
     try {
       if (!cardCache[s[3]]) cardCache[s[3]] = await loadJSON('cards/' + encodeURIComponent(s[3]) + '.json');
       if (!facData) facData = await loadJSON('facilities.json');
-      if (!subway) subway = await loadJSON('subway.json');
+      if (!subway) [subway, busHours] = await Promise.all([loadJSON('subway.json'), loadJSON('bus_hours.json')]);
       await ensure4();
     } catch (e) { body.innerHTML = '<p class="hint">카드를 불러오지 못했습니다. 다시 눌러 주세요.</p>'; return; }
     const c = cardCache[s[3]][s[0]];
@@ -305,6 +305,36 @@
     for (const st of subway) { const d = hav(s[2], s[1], st[1], st[2]); if (!best || d < best[1]) best = [st, d]; }
     return best && best[1] <= 800 ? best : null;
   }
+  // 이 자리 시간대별 오가는 사람: 800m 안 지하철역이 있으면 그 역, 없으면 300m(없으면 500m) 안 버스 정류장 합계
+  let busHours;
+  function areaHours(s) {
+    const st = stationNear(s);
+    if (st) return { h: st[0][3], src: `가까운 지하철 ${st[0][0].replace(/\d$/, '')}역(${dist(st[1])})` };
+    for (const r of [300, 500]) {
+      const near = busHours.filter((b) => hav(s[2], s[1], b[0], b[1]) <= r);
+      if (near.length) {
+        const h = near[0][2].map((_, i) => near.reduce((a, b) => a + b[2][i], 0));
+        return { h, src: `${r}m 안 버스 정류장 ${near.length}곳` };
+      }
+    }
+    return null;
+  }
+  function peaks(h) {
+    return h.map((v, i) => [v, i + 5]).sort((a, b) => b[0] - a[0]).slice(0, 3).map((x) => x[1]).sort((a, b) => a - b);
+  }
+  // 붐비는 시간대 → 영업 시간 참고(규칙)
+  function bizTip(h) {
+    const sum = (a, b) => h.slice(a - 5, b - 5).reduce((x, y) => x + y, 0);
+    const tot = h.reduce((x, y) => x + y, 0) || 1;
+    const share = { 아침: sum(6, 10) / tot, 점심: sum(11, 14) / tot, 저녁: sum(17, 21) / tot, 밤: sum(21, 24) / tot };
+    const top = Object.entries(share).sort((a, b) => b[1] - a[1])[0][0];
+    return {
+      아침: '출근길에 사람이 가장 많습니다. 카페·베이커리처럼 아침 장사가 중요한 업종이면 이 시간을 살피세요.',
+      점심: '점심시간에 사람이 가장 많습니다. 한식·분식처럼 점심 장사가 중요한 업종이면 이 시간을 살피세요.',
+      저녁: '퇴근길에 사람이 가장 많습니다. 반찬가게·저녁 식사처럼 저녁 장사가 중요한 업종이면 이 시간을 살피세요.',
+      밤: '밤늦게도 사람이 많이 다닙니다. 호프·PC방처럼 밤 장사가 중요한 업종이면 이 시간을 살피세요.',
+    }[top];
+  }
   function hoursChart(h) {
     const mx = Math.max(...h);
     return `<div class="hours">${h.map((v, i) => `<i style="height:${Math.max(3, Math.round((v / mx) * 36))}px" title="${i + 5}시 ${fmt(v)}명"></i>`).join('')}</div>
@@ -315,7 +345,7 @@
     const P = c.pub[0]; const k = P[0]; const sp = meta.public[k]; const pg = PROGRAM[k]; const has = P[1] > 0;
     const exist = nearest(k, s, 3);
     const inR = exist.filter((e) => e[1] <= sp.r);
-    const st = stationNear(s);
+    const ah = areaHours(s);
     const floorOk = !c.fl || /^(1|2)$/.test(c.fl);
     const rows = c.pub.map((p) => `<div class="prow ${p[0] === k && has ? 'on' : ''}"><span>${esc(meta.public[p[0]].name)}</span>
         <span class="ptrack"><span style="width:${Math.round(p[1])}%"></span></span><span class="pv">${p[1] > 0 ? Math.round(p[1]) + '점' : '충분'}</span></div>`).join('');
@@ -341,7 +371,7 @@
 
           <h5>시간대별 운영안</h5>
           <ul class="slots">${pg.slots.map(([a, b]) => `<li><b>${a}</b><span>${esc(b)}</span></li>`).join('')}</ul>
-          ${st ? `<p class="sub2">가까운 지하철 ${esc(st[0][0].replace(/\d$/, ''))}역(${dist(st[1])})의 시간대별 이용객입니다. 오가는 사람이 많은 시간에 맞춰 문을 엽니다.</p>${hoursChart(st[0][3])}` : ''}
+          ${ah ? `<p class="sub2">${esc(ah.src)}의 시간대별 이용객(하루 평균)입니다. 오가는 사람이 많은 ${peaks(ah.h).join('·')}시에 맞춰 문을 엽니다.</p>${hoursChart(ah.h)}` : ''}
 
           <h5>공간 확보와 운영</h5>
           <ul class="how">
@@ -375,6 +405,8 @@
         <label class="mypick"><span>하려는 업종이 따로 있나요?</span>
           <select id="myType"><option value="">업종 고르기</option>${opts}</select></label>
         <div id="myResult"></div>
+        ${(() => { const ah = areaHours(s); return ah ? `<h5 class="h5">이 자리를 오가는 사람 <small>${esc(ah.src)} · 하루 평균</small></h5>${hoursChart(ah.h)}
+          <p class="my">가장 붐비는 시간: <b>${peaks(ah.h).join('시 · ')}시</b>. ${bizTip(ah.h)}</p>` : ''; })()}
       </section>`;
   }
 
