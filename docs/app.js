@@ -36,7 +36,8 @@
 
   let meta, stores, typeKeys, map, cluster, dongLayer, facLayers = {}, facData, renderer;
   const cardCache = {};
-  const state = { verdicts: new Set([0, 1, 2]), gu: '', type: '', lo: 0, hi: 100, fitOnly: true };
+  const state = { verdicts: new Set([0, 1, 2]), gu: '', type: '', lo: 0, hi: 100, fitOnly: true, me: null, r: 3000 };
+  let meLayer;  // 내 위치 핀 + 반경 원
   let LL = {};  // 집주인 의견: 시연용 예시(landlord_demo.json) + 이 브라우저에서 남긴 의견(localStorage)
 
   function seqColor(v) {
@@ -94,9 +95,11 @@
     return L.divIcon({ html: `<div class="${cls}" style="width:${size}px;height:${size}px;background:${bg}" title="창업 ${k[0]} · 공공시설 ${k[1]} · 지켜보기 ${k[2]}"><span>${n >= 1000 ? (n / 1000).toFixed(1) + '천' : n}</span></div>`, className: '', iconSize: [size, size] });
   }
 
+  const meDist = (s) => (state.me ? hav(state.me[1], state.me[0], s[2], s[1]) : 0);
+  const inR = (s) => !state.me || meDist(s) <= state.r;
   function visible(s) {
-    if (state.gu && s[3] !== state.gu) return false;
-    if (state.type && state.fitOnly) return fits(s);   // 찾기 모드: 판정과 상관없이 고른 업종·시설에 잘 맞는 자리
+    if (state.type && state.fitOnly) return (state.me ? inR(s) : !state.gu || s[3] === state.gu) && fits(s);  // 내 위치가 있으면 구 대신 반경
+    if (state.gu && s[3] !== state.gu) return false;   // 찾기 모드: 판정과 상관없이 고른 업종·시설에 잘 맞는 자리
     return state.verdicts.has(s[4]);
   }
   // 잘 맞는 자리: 업종 = 3년 생존 확률이 대구 평균의 1.1배 이상, 시설 = 부족 점수 50점 이상(1~2층 아님은 카드에서 안내). 집주인이 막은 쓰임은 뺌
@@ -207,12 +210,47 @@
     });
     $('#fitOnly').addEventListener('change', (e) => { state.fitOnly = e.target.checked; $('#vfilter').classList.toggle('dim', state.fitOnly); redraw(); });
     $('#openFind').addEventListener('click', openFind);
+    // 내 위치: 지도 클릭 또는 현재 위치(GPS). 이 브라우저에만 기억하고 어디에도 보내지 않음
+    try { const m = JSON.parse(localStorage.getItem('me') || 'null'); if (m) { state.me = m.p; state.r = m.r; } } catch (e) { /* 저장소 없음 */ }
+    $('#meR').value = String(state.r);
+    $('#meSet').addEventListener('click', () => {
+      $('#meTxt').textContent = '지도에서 내 위치를 누르세요';
+      map.getContainer().classList.add('picking');
+      map.once('click', (e) => { map.getContainer().classList.remove('picking'); setMe([e.latlng.lat, e.latlng.lng]); });
+    });
+    $('#meGps').addEventListener('click', () => {
+      if (!navigator.geolocation) { $('#meTxt').textContent = '이 브라우저는 현재 위치를 지원하지 않습니다'; return; }
+      $('#meTxt').textContent = '현재 위치 찾는 중';
+      navigator.geolocation.getCurrentPosition((g) => setMe([g.coords.latitude, g.coords.longitude]),
+        () => { $('#meTxt').textContent = '현재 위치를 못 받았습니다. 지도에서 찍어 주세요'; }, { timeout: 8000 });
+    });
+    $('#meR').addEventListener('change', (e) => { state.r = +e.target.value; setMe(state.me); });
+    $('#meClear').addEventListener('click', () => setMe(null));
+    if (state.me) setMe(state.me, true);
     $('#layerDong').addEventListener('change', (e) => toggleDong(e.target.checked));
     [['layerSenior', 'senior'], ['layerLibrary', 'library'], ['layerChild', 'childcare'], ['layerCowork', 'cowork']].forEach(([id, k]) =>
       $('#' + id).addEventListener('change', (e) => toggleFac(k, e.target.checked)));
     $('#closeCard').addEventListener('click', closeCard);
     $('#openMethod').addEventListener('click', () => $('#method').showModal());
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#card').hidden) closeCard(); });
+  }
+
+  function setMe(p, quiet) {
+    state.me = p;
+    if (meLayer) { meLayer.remove(); meLayer = null; }
+    try { p ? localStorage.setItem('me', JSON.stringify({ p, r: state.r })) : localStorage.removeItem('me'); } catch (e) { /* 저장소 없음 */ }
+    $('#meClear').hidden = !p;
+    if (p) {
+      meLayer = L.layerGroup([
+        L.circle(p, { radius: state.r, color: '#1d2330', weight: 1.5, dashArray: '6 6', fill: true, fillOpacity: 0.04, interactive: false }),
+        L.marker(p, { icon: L.divIcon({ html: '<div class="mepin"></div>', className: '', iconSize: [18, 18] }), interactive: false, keyboard: false })
+      ]).addTo(map);
+      const inside = stores.filter(inR).length;
+      $('#meTxt').textContent = `반경 ${state.r / 1000}km 안 빈 점포 ${fmt(inside)}곳`;
+      if (!quiet) map.fitBounds(L.latLng(p).toBounds(state.r * 2.1));
+    } else $('#meTxt').textContent = '';
+    redraw();
+    if (state.type && !$('#card').hidden && $('#cardBody .head.find')) openFind();
   }
 
   function fitGu() {
@@ -224,7 +262,7 @@
     const inGu = stores.filter((s) => !state.gu || s[3] === state.gu);
     const c = [0, 0, 0]; inGu.forEach((s) => c[s[4]]++);
     $('#total').innerHTML = state.type && state.fitOnly
-      ? `<b>${fmt(inGu.filter(fits).length)}</b>곳 · ${state.gu ? esc(state.gu) : '대구'}에서 ${esc(modeName().replace(/ (3년 생존 확률|부족 점수)$/, ''))}에 잘 맞는 자리`
+      ? `<b>${fmt(stores.filter(visible).length)}</b>곳 · ${state.me ? `내 위치 ${state.r / 1000}km 안` : state.gu ? esc(state.gu) : '대구'}에서 ${esc(modeName().replace(/ (3년 생존 확률|부족 점수)$/, ''))}에 잘 맞는 자리`
       : `<b>${fmt(inGu.length)}</b>곳 · ${state.gu ? esc(state.gu) : '대구'} 빈 점포(추정)`;
     c.forEach((n, i) => { $('#n' + i).textContent = fmt(n); });
   }
@@ -298,6 +336,7 @@
       if (pick.value) { $('#rentType').value = pick.value; $('#rentType').dispatchEvent(new Event('change')); }
     });
     bindRent(s, c);
+    if (state.type.startsWith('b:')) { pick.value = state.type.slice(2); pick.dispatchEvent(new Event('change')); }  // 찾던 업종을 바로 보여 줌
     bindRows(); bindLL(s);
     $('#card').scrollTop = 0;
     setTimeout(() => map.invalidateSize(), 0);
@@ -340,6 +379,8 @@
     return `${bar([t, p])}${no}
       <p class="my">${esc(ty.name)}${eul(ty.name)} 이 자리에 열면 3년 뒤에도 영업 중일 확률은 <b>${pct(p)}</b>로, 대구 평균보다 <b>${better ? '높습니다' : '낮습니다'}</b>.
       대구 빈 점포 ${fmt(arr.length)}곳 가운데 <b>상위 ${top}%</b>입니다.
+      ${state.me ? (() => { const loc = stores.filter(inR); const better = loc.filter((x) => x[5][ti] > v).length;
+        return inR(s) ? `내 위치 ${state.r / 1000}km 안 빈 점포 ${fmt(loc.length)}곳 가운데 <b>${fmt(better + 1)}위</b>입니다. ` : `이 자리는 내 위치에서 ${dist(meDist(s))} 떨어져 있어 반경 ${state.r / 1000}km 밖입니다. `; })() : ''}
       ${near ? `1km 안에 이 업종 확률이 더 높은 빈 점포가 ${fmt(near)}곳 있습니다. 왼쪽 '색으로 보기'에서 ${esc(ty.name)}${eul(ty.name)} 고르면 지도에서 찾을 수 있습니다.` : '1km 안 빈 점포 중에서는 이 자리가 가장 높습니다.'}</p>`;
   }
 
@@ -459,7 +500,7 @@
   const man = (x) => fmt(Math.round(x)) + '만 원';
   function rentBody(s, c, t, area) {
     const r = rentCalc(s, t, area); const nm = meta.types[t].name; const ll = llGet(s[0]);
-    const lvl = r.max <= 0 ? 'bad' : r.market <= r.max * 0.8 ? 'good' : r.market <= r.max ? 'mid' : 'bad';
+    const lvl = r.max < 10 ? 'bad' : r.market <= r.max * 0.8 ? 'good' : r.market <= r.max ? 'mid' : 'bad';
     const say = r.max <= 0
       ? `평균 매출로는 월세를 내고 나면 사장 몫(최저임금)도 남지 않습니다. 매출이 평균보다 높을 자신이 있을 때만 검토하세요.`
       : { good: `이 동네 시세(약 ${man(r.market)})면 여유가 있습니다.`, mid: `이 동네 시세(약 ${man(r.market)})면 빠듯합니다. 매출이 평균보다 낮으면 손해입니다.`,
@@ -467,14 +508,14 @@
     const w = Math.max(r.max, r.market, r.usual, (ll && ll.want) || 0, 1);
     const line = (label, v, cls) => `<div class="rline ${cls}"><span>${label}</span><span class="rtrack"><span style="width:${Math.max(2, Math.round((Math.max(0, v) / w) * 100))}%"></span></span><b>${v > 0 ? man(v) : '없음'}</b></div>`;
     return `
-      <div class="rverdict ${lvl}"><b>${esc(nm)}${eul(nm)} 하려면 월세 ${r.max > 0 ? man(r.max) + '까지' : '부담이 큼'}</b><span>${say}</span></div>
+      <div class="rverdict ${lvl}"><b>${esc(nm)}${eul(nm)} 하려면 월세 ${r.max >= 10 ? man(r.max) + '까지' : '부담이 큼'}</b><span>${say}</span></div>
       <div class="rlines">
         ${line('버틸 수 있는 월세', r.max, 'max')}
         ${line('업계 평균 월세', r.usual, 'usual')}
         ${line(`시세 (${esc(r.mk.name)})`, r.market, 'mk')}
         ${ll && ll.want ? line('집주인 희망', ll.want, 'll') : ''}
       </div>
-      ${ll && ll.want && r.max > 0 ? `<p class="my">집주인 희망 월세 ${man(ll.want)}은 ${ll.want <= r.max ? '<b>맞출 수 있는</b> 값입니다.' : `버틸 수 있는 선보다 <b>${man(ll.want - r.max)} 높습니다</b>. 조정이 필요합니다.`}</p>` : ''}
+      ${ll && ll.want && r.max >= 10 ? `<p class="my">집주인 희망 월세 ${man(ll.want)}은 ${ll.want <= r.max ? '<b>맞출 수 있는</b> 값입니다.' : `버틸 수 있는 선보다 <b>${man(ll.want - r.max)} 높습니다</b>. 조정이 필요합니다.`}</p>` : ''}
       <p class="sub2">계산: 월 매출 약 ${man(r.sales)}(${esc(r.g.name)} 평균 매출을 면적으로 ${r.f.toFixed(2)}배 조정) × 비용 빼기 전 이익률 ${Math.round(((r.g.profit + r.g.rent) / r.g.sales) * 100)}% − 사장 최저임금 ${man(RENT.minwage)}. 시세는 ㎡당 ${(r.mk.v * 1000).toLocaleString('ko-KR')}원(2026년 3분기 소규모 상가, ${/^(1|2)$/.test(c.fl || '1') ? '' : '1층 기준이라 이 층은 더 낮을 수 있음, '}보증금 제외).</p>`;
   }
   function rentHTML(s, c, t0) {
@@ -553,7 +594,8 @@
   function cardHTML(s, c) {
     const h = headline(c);
     const floor = c.fl ? `${esc(c.fl)}층` : '층 정보 없음';
-    const parts = c.v === 'public' ? [publicHTML(s, c), bizHTML(s, c)] : [bizHTML(s, c), publicHTML(s, c)];
+    const pubFirst = state.type ? state.type.startsWith('p:') : c.v === 'public';  // 찾기 중이면 고른 쪽을 먼저
+    const parts = pubFirst ? [publicHTML(s, c), bizHTML(s, c)] : [bizHTML(s, c), publicHTML(s, c)];
     return `
       <div class="head ${c.v}">
         <div class="lab">${VNAME[c.v]}</div>
@@ -655,8 +697,15 @@
     if (!state.type) return;
     const fv = modeVal(); const [k, code] = state.type.split(':');
     const nm = k === 'b' ? meta.types[code].name : meta.public[code].name;
-    const all = stores.filter((s) => (!state.gu || s[3] === state.gu) && fits(s));
+    const all = stores.filter(visible);
     const rows = all.slice().sort((a, b) => fv(b) - fv(a)).slice(0, 20);
+    // 반경 밖이지만 반경 안 1위보다 확률·점수가 높은 가장 가까운 자리
+    let outer = null;
+    if (state.me) {
+      const best = rows.length ? fv(rows[0]) : -1;
+      outer = stores.filter((s) => !inR(s) && fits(s) && fv(s) > best).sort((a, b) => meDist(a) - meDist(b))[0] || null;
+      if (outer) rows.push(outer);
+    }
     showPanel('<p class="hint">불러오는 중</p>');
     try {
       await Promise.all([...new Set(rows.map((r) => r[3]))].map(async (g) => { if (!cardCache[g]) cardCache[g] = await loadJSON('cards/' + encodeURIComponent(g) + '.json'); }));
@@ -666,12 +715,17 @@
     showPanel(`
       <div class="head find ${k === 'b' ? 'biz' : 'public'}"><div class="lab">${k === 'b' ? '이 가게를 열고 싶다면' : '이 시설을 두고 싶다면'}</div>
         <h3>${esc(nm)}에 잘 맞는 빈 점포 ${fmt(all.length)}곳</h3>
-        <p>${state.gu ? esc(state.gu) : '대구 전체'} · ${k === 'b' ? '3년 생존 확률이 높은 순' : '부족 점수가 높은 순'} · 상위 ${rows.length}곳</p></div>
-      ${!state.gu && guTop.length ? `<p class="sub2">많은 구: ${guTop.map(([g, n]) => `${esc(g)} ${fmt(n)}곳`).join(', ')}</p>` : ''}
-      <ol class="rows num">${rows.map((r) => {
-        const c = cardCache[r[3]][r[0]] || {}; const v = fv(r); const ll = llGet(r[0]);
-        return `<li><button type="button" class="rowbtn" data-id="${r[0]}"><span class="ra">${esc(c.addr || r[0])}${c.fl ? ' ' + esc(c.fl) + '층' : ''}<small>${esc(c.dong || '')}${ll ? ' · 집주인 의견 있음' : ''}</small></span><span class="rb">${k === 'b' ? v + '%' : v + '점'}</span></button></li>`;
-      }).join('')}</ol>
+        <p>${state.me ? `내 위치 ${state.r / 1000}km 안` : state.gu ? esc(state.gu) : '대구 전체'} · ${k === 'b' ? '3년 생존 확률이 높은 순' : '부족 점수가 높은 순'} · 상위 ${rows.length - (outer ? 1 : 0)}곳</p></div>
+      ${!state.me ? '<p class="sub2">왼쪽에서 내 위치를 정하면 가까운 자리 안에서 순위를 매깁니다.</p>' : ''}
+      ${state.me && !all.length ? `<p class="sub2">반경 ${state.r / 1000}km 안에는 잘 맞는 자리가 없습니다. 반경을 넓혀 보세요.</p>` : ''}
+      ${!state.gu && !state.me && guTop.length ? `<p class="sub2">많은 구: ${guTop.map(([g, n]) => `${esc(g)} ${fmt(n)}곳`).join(', ')}</p>` : ''}
+      ${(() => {
+        const row = (r) => { const c = cardCache[r[3]][r[0]] || {}; const v = fv(r); const ll = llGet(r[0]);
+          return `<li><button type="button" class="rowbtn" data-id="${r[0]}"><span class="ra">${esc(c.addr || r[0])}${c.fl ? ' ' + esc(c.fl) + '층' : ''}<small>${esc(c.dong || '')}${state.me ? ' · 내 위치에서 ' + dist(meDist(r)) : ''}${ll ? ' · 집주인 의견 있음' : ''}</small></span><span class="rb">${k === 'b' ? v + '%' : v + '점'}</span></button></li>`; };
+        const inner = outer ? rows.slice(0, -1) : rows;
+        return `<ol class="rows num">${inner.map(row).join('')}</ol>` +
+          (outer ? `<h5 class="h5">조금 더 가면 <small>반경 밖에서 이 목록 1위보다 높은 가장 가까운 자리</small></h5><ul class="rows">${row(outer)}</ul>` : '');
+      })()}
       <p class="note">자리를 누르면 지도에서 카드가 열립니다. 지역을 바꾸면 그 구의 순위로 바뀝니다. ${k === 'b' ? `대구 빈 점포 평균은 ${Math.round(meta.types[code].avg)}%입니다.` : ''}</p>`);
     bindRows();
   }

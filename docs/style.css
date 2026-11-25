@@ -277,3 +277,13 @@ select:disabled { color: var(--ink-3); background: var(--bg); }
 .rline.max .rtrack span { background: var(--biz); } .rline.mk .rtrack span { background: var(--warn); } .rline.ll .rtrack span { background: #a3261f; }
 
 .bar .val .x { color: var(--biz); font-weight: 700; }
+
+/* 6판: 내 위치 */
+.me { display: grid; gap: 6px; }
+.metitle { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.mebtns { display: flex; flex-wrap: wrap; gap: 6px; }
+.mebtns .link { padding: 5px 10px; font-size: 13px; background: var(--paper); }
+.mebtns select { padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 13px; background: var(--paper); }
+.mebtns [hidden] { display: none; }
+.mepin { width: 18px; height: 18px; border-radius: 50%; background: #1d2330; border: 3px solid #fff; box-shadow: 0 0 0 2px #1d2330; }
+#map.picking, #map.picking .leaflet-interactive { cursor: crosshair; }
