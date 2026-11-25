@@ -44,6 +44,13 @@ pb = np.array([base.get((g, t), gm[t]) for g, t in zip(te.gu, te.type)])
 te = te.assign(p=p, pb=pb)
 met = {'split': '2015~2019년 개업으로 학습 → 2020년~2023년 10월 개업으로 시험(미래 예측처럼)', 'n_train': int(len(tr)), 'n_test': int(len(te)),
        'auc_model': round(roc_auc_score(te.y3, te.p), 3), 'auc_baseline_gu_type': round(roc_auc_score(te.y3, te.pb), 3), 'by_type': {}}
+# 비교용: 시험 세트 행별 예측 저장(팀원 모델과 같은 행으로 비교)
+cc = c.loc[te.index]
+lon_, lat_ = T_5174_TO_WGS.transform(cc.x.values, cc.y.values)
+pd.DataFrame({'row_id': te.index, 'type': te.type.values, 'type_name': te.type.map(TYPE_NAME).values, 'open_date': cc.open.dt.date.values,
+              'close_date': cc.close.dt.date.values, 'jibun_addr': cc['지번주소'].values, 'lon': np.round(lon_, 6), 'lat': np.round(lat_, 6),
+              'gu': te.gu.values, 'y_survive3y': te.y3.values, 'p_our_model': te.p.round(4).values, 'p_baseline_gu_type': np.round(te.pb, 4)}
+             ).to_csv(os.path.join(W, 'test_predictions.csv'), index=False, encoding='utf-8-sig')
 te['q'] = pd.qcut(te.p.rank(method='first'), 5, labels=False)
 met['quintile_actual_survival'] = (te.groupby('q').y3.mean() * 100).round(1).tolist()
 for t in codes:
