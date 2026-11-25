@@ -326,7 +326,7 @@
       if (!facData) facData = await loadJSON('facilities.json');
       if (!subway) [subway, busHours] = await Promise.all([loadJSON('subway.json'), loadJSON('bus_hours.json')]);
       await ensure4();
-      if (!RENT) [RENT, AREA] = await Promise.all([fetch('rent.json').then((r) => r.json()), fetch('store_area.json').then((r) => r.json())]);
+      if (!RENT) [RENT, AREA] = await Promise.all([fetch('rent.json?v=6.1').then((r) => r.json()), fetch('store_area.json').then((r) => r.json())]);
     } catch (e) { body.innerHTML = '<p class="hint">카드를 불러오지 못했습니다. 다시 눌러 주세요.</p>'; return; }
     const c = cardCache[s[3]][s[0]];
     body.innerHTML = cardHTML(s, c);

@@ -5,7 +5,7 @@
     "food": { "name": "음식점업(대구 숙박·음식점업)", "sales": 124, "profit": 29, "rent": 13, "area": 90 },
     "retail": { "name": "소매업(대구 도소매업)", "sales": 284, "profit": 19, "rent": 14, "area": 114 },
     "svc": { "name": "개인서비스업(대구)", "sales": 68, "profit": 19, "rent": 5, "area": 73 },
-    "leisure": { "name": "여가서비스업(대구 예술·스포츠·여가)", "sales": 102, "profit": 28, "rent": 10.7, "area": 77, "est": "임차료는 매출의 10.5%(음식점업 비중)로 가정, 면적은 대구 PC방 인허가 중앙값" }
+    "leisure": { "name": "여가서비스업(대구 예술·스포츠·여가)", "sales": 102, "profit": 28, "rent": 17, "area": 77, "est": "면적은 대구 PC방 인허가 중앙값(원표 대구 예술·스포츠·여가 평균 145㎡는 큰 시설이 섞여 쓰지 않음)" }
   },
   "typeGroup": { "korean": "food", "pub": "food", "western": "food", "snack": "food", "jpcn": "food", "cafe": "food", "bakery": "food", "conv": "retail", "deli": "retail", "hair": "svc", "beauty": "svc", "pcbang": "leisure", "karaoke": "leisure", "gym": "leisure", "petgroom": "svc" },
   "cityRent": 20.6,
