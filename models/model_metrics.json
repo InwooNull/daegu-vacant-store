@@ -1,0 +1,266 @@
+{
+ "split": "2015~2019년 개업으로 학습 → 2020년~2023년 10월 개업으로 시험(미래 예측처럼)",
+ "n_train": 24403,
+ "n_test": 19235,
+ "auc_model": 0.663,
+ "auc_baseline_gu_type": 0.654,
+ "by_type": {
+  "korean": {
+   "name": "한식 음식점",
+   "n_test": 4090,
+   "auc": 0.555,
+   "auc_baseline": 0.519,
+   "bottom20_actual": 59.0,
+   "top20_actual": 71.0
+  },
+  "pub": {
+   "name": "호프·주점",
+   "n_test": 892,
+   "auc": 0.515,
+   "auc_baseline": 0.498,
+   "bottom20_actual": 68.2,
+   "top20_actual": 69.3
+  },
+  "western": {
+   "name": "경양식·레스토랑",
+   "n_test": 678,
+   "auc": 0.545,
+   "auc_baseline": 0.495,
+   "bottom20_actual": 58.1,
+   "top20_actual": 70.6
+  },
+  "snack": {
+   "name": "분식",
+   "n_test": 435,
+   "auc": 0.503,
+   "auc_baseline": 0.522,
+   "bottom20_actual": 65.5,
+   "top20_actual": 64.4
+  },
+  "jpcn": {
+   "name": "일식·중식",
+   "n_test": 834,
+   "auc": 0.567,
+   "auc_baseline": 0.508,
+   "bottom20_actual": 65.9,
+   "top20_actual": 74.9
+  },
+  "cafe": {
+   "name": "카페",
+   "n_test": 2794,
+   "auc": 0.538,
+   "auc_baseline": 0.528,
+   "bottom20_actual": 57.6,
+   "top20_actual": 67.4
+  },
+  "conv": {
+   "name": "편의점",
+   "n_test": 936,
+   "auc": 0.524,
+   "auc_baseline": 0.483,
+   "bottom20_actual": 74.5,
+   "top20_actual": 79.7
+  },
+  "bakery": {
+   "name": "제과·베이커리",
+   "n_test": 493,
+   "auc": 0.597,
+   "auc_baseline": 0.511,
+   "bottom20_actual": 38.4,
+   "top20_actual": 61.6
+  },
+  "deli": {
+   "name": "반찬·즉석식품",
+   "n_test": 3845,
+   "auc": 0.682,
+   "auc_baseline": 0.506,
+   "bottom20_actual": 5.9,
+   "top20_actual": 50.2
+  },
+  "hair": {
+   "name": "미용실",
+   "n_test": 1672,
+   "auc": 0.558,
+   "auc_baseline": 0.561,
+   "bottom20_actual": 77.6,
+   "top20_actual": 84.8
+  },
+  "beauty": {
+   "name": "피부·네일",
+   "n_test": 1529,
+   "auc": 0.526,
+   "auc_baseline": 0.521,
+   "bottom20_actual": 67.3,
+   "top20_actual": 72.5
+  },
+  "gym": {
+   "name": "헬스·체육도장",
+   "n_test": 472,
+   "auc": 0.456,
+   "auc_baseline": 0.486,
+   "bottom20_actual": 88.4,
+   "top20_actual": 84.2
+  },
+  "karaoke": {
+   "n_test": 29,
+   "auc": null
+  },
+  "pcbang": {
+   "name": "PC방",
+   "n_test": 289,
+   "auc": 0.619,
+   "auc_baseline": 0.481,
+   "bottom20_actual": 46.6,
+   "top20_actual": 74.1
+  },
+  "petgroom": {
+   "name": "반려동물 미용",
+   "n_test": 247,
+   "auc": 0.4,
+   "auc_baseline": 0.445,
+   "bottom20_actual": 86.0,
+   "top20_actual": 70.0
+  }
+ },
+ "quintile_actual_survival": [
+  38.5,
+  60.6,
+  65.6,
+  70.5,
+  77.9
+ ],
+ "feature_importance": {
+  "type": 0.177,
+  "hist_rate500": 0.1,
+  "prior_close_addr": 0.075,
+  "n_all300": 0.063,
+  "same_share300": 0.057,
+  "open1y_same300": 0.055,
+  "routes300": 0.051,
+  "close1y_all300": 0.047,
+  "density": 0.041,
+  "hist_n500": 0.041,
+  "n_same300": 0.039,
+  "r_age20_39": 0.037,
+  "r_apt": 0.036,
+  "r_age0_4": 0.036,
+  "r_age65p": 0.036,
+  "r_hh1": 0.033,
+  "n_same100": 0.033,
+  "close1y_same300": 0.026,
+  "bus300": 0.019
+ },
+ "recent_avg_survival": {
+  "korean": 65.3,
+  "pub": 66.1,
+  "western": 60.5,
+  "snack": 60.3,
+  "jpcn": 69.9,
+  "cafe": 60.2,
+  "conv": 74.6,
+  "bakery": 51.5,
+  "deli": 35.8,
+  "hair": 83.8,
+  "beauty": 71.2,
+  "gym": 90.6,
+  "karaoke": 93.8,
+  "pcbang": 57.4,
+  "petgroom": 78.8
+ },
+ "recent_n": {
+  "korean": 2966,
+  "pub": 632,
+  "western": 521,
+  "snack": 305,
+  "jpcn": 635,
+  "cafe": 2099,
+  "conv": 696,
+  "bakery": 388,
+  "deli": 2982,
+  "hair": 1256,
+  "beauty": 1195,
+  "gym": 318,
+  "karaoke": 16,
+  "pcbang": 195,
+  "petgroom": 184
+ },
+ "median_train": {
+  "bakery": {
+   "n_same300": 3.0,
+   "close1y_same300": 0.0,
+   "n_all300": 126.0
+  },
+  "beauty": {
+   "n_same300": 7.0,
+   "close1y_same300": 1.0,
+   "n_all300": 132.0
+  },
+  "cafe": {
+   "n_same300": 8.0,
+   "close1y_same300": 1.0,
+   "n_all300": 123.0
+  },
+  "conv": {
+   "n_same300": 1.0,
+   "close1y_same300": 0.0,
+   "n_all300": 103.0
+  },
+  "deli": {
+   "n_same300": 11.0,
+   "close1y_same300": 2.0,
+   "n_all300": 115.0
+  },
+  "gym": {
+   "n_same300": 4.0,
+   "close1y_same300": 0.0,
+   "n_all300": 118.0
+  },
+  "hair": {
+   "n_same300": 18.0,
+   "close1y_same300": 1.0,
+   "n_all300": 121.0
+  },
+  "jpcn": {
+   "n_same300": 9.0,
+   "close1y_same300": 0.0,
+   "n_all300": 146.0
+  },
+  "karaoke": {
+   "n_same300": 8.0,
+   "close1y_same300": 0.0,
+   "n_all300": 160.0
+  },
+  "korean": {
+   "n_same300": 42.0,
+   "close1y_same300": 3.0,
+   "n_all300": 123.0
+  },
+  "pcbang": {
+   "n_same300": 4.0,
+   "close1y_same300": 0.0,
+   "n_all300": 134.0
+  },
+  "petgroom": {
+   "n_same300": 0.0,
+   "close1y_same300": 0.0,
+   "n_all300": 111.0
+  },
+  "pub": {
+   "n_same300": 9.0,
+   "close1y_same300": 0.0,
+   "n_all300": 124.0
+  },
+  "snack": {
+   "n_same300": 4.0,
+   "close1y_same300": 0.0,
+   "n_all300": 132.0
+  },
+  "western": {
+   "n_same300": 7.0,
+   "close1y_same300": 1.0,
+   "n_all300": 144.0
+  }
+ },
+ "auc_within_type_weighted": 0.569,
+ "auc_within_type_baseline": 0.515
+}

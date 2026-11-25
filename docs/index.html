@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>빈 점포 한 칸 — 대구 빈 점포 쓰임 찾기</title>
+<meta name="description" content="대구 빈 점포(추정)마다 창업하면 3년 버틸 확률과 주민에게 모자란 생활시설을 함께 보여 줍니다. 공공데이터로 계산했습니다.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    <div>
+      <h1>빈 점포 한 칸, 장사할 곳인가 쉼터가 될 곳인가</h1>
+      <p class="sub">대구 빈 점포(추정)를 공공데이터로 두 갈래 판정합니다 · 16비트</p>
+    </div>
+  </div>
+  <button class="link" id="openMethod" type="button">계산 방법과 정확도</button>
+</header>
+
+<main class="layout">
+  <aside class="panel" id="panel">
+    <section class="counts" id="counts" aria-label="판정 요약"></section>
+
+    <section class="block">
+      <h2>판정</h2>
+      <div class="chips" id="verdictChips">
+        <label class="chip biz"><input type="checkbox" value="0" checked><span>창업 연계</span></label>
+        <label class="chip public"><input type="checkbox" value="1" checked><span>공공 활용</span></label>
+        <label class="chip hold"><input type="checkbox" value="2" checked><span>보류</span></label>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>지역</h2>
+      <select id="guSelect" aria-label="구·군 선택"><option value="">대구 전체</option></select>
+    </section>
+
+    <section class="block">
+      <h2>업종으로 보기</h2>
+      <p class="hint">업종을 고르면 그 업종을 열었을 때 3년 버틸 확률로 점을 칠합니다.</p>
+      <select id="typeSelect" aria-label="업종 선택"><option value="">판정 색으로 보기</option></select>
+      <div class="legend-seq" id="seqLegend" hidden>
+        <span>낮음</span><i></i><span>높음</span>
+      </div>
+      <p class="hint warn" id="typeWarn" hidden></p>
+    </section>
+
+    <section class="block">
+      <h2>지도에 겹쳐 보기</h2>
+      <label class="toggle"><input type="checkbox" id="layerDong"><span>동네 유형(행정동)</span></label>
+      <label class="toggle"><input type="checkbox" id="layerSenior"><span>경로당</span></label>
+      <label class="toggle"><input type="checkbox" id="layerLibrary"><span>도서관</span></label>
+      <label class="toggle"><input type="checkbox" id="layerChild"><span>지역아동센터·다함께돌봄</span></label>
+      <div class="dtype-legend" id="dtypeLegend" hidden></div>
+    </section>
+
+    <p class="foot">빈 점포는 상가정보에서 사라진 자리로 추정한 것입니다. 실제 공실 여부는 현장·건축물대장으로 확인해야 합니다.</p>
+  </aside>
+
+  <div class="mapwrap">
+    <div id="map" role="application" aria-label="대구 빈 점포 지도"></div>
+    <div class="loading" id="loading">데이터를 불러오는 중</div>
+  </div>
+
+  <aside class="card" id="card" aria-live="polite" hidden>
+    <button class="close" id="closeCard" type="button" aria-label="카드 닫기">×</button>
+    <div id="cardBody"></div>
+  </aside>
+</main>
+
+<dialog id="method">
+  <form method="dialog"><button class="close" aria-label="닫기">×</button></form>
+  <div id="methodBody"></div>
+</dialog>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
