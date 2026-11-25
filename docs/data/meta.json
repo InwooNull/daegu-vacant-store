@@ -1,56 +1,56 @@
 {
- "generated": "2026-11-25 15:07",
+ "generated": "2026-11-25 15:22",
  "n_stores": 15592,
  "verdict_counts": {
-  "hold": 6310,
-  "public": 5557,
-  "biz": 3725
+  "hold": 6116,
+  "public": 5328,
+  "biz": 4148
  },
  "permit_confirmed": 4242,
  "types": {
   "korean": {
    "name": "한식 음식점",
    "rel": "weak",
-   "auc": 0.555,
+   "auc": 0.56,
    "auc_base": 0.519,
    "avg": 65.3,
    "n_recent": 2966,
    "n_test": 4090,
-   "bottom20": 59.0,
-   "top20": 71.0
+   "bottom20": 60.9,
+   "top20": 73.1
   },
   "pub": {
    "name": "호프·주점",
-   "rel": "none",
-   "auc": 0.515,
+   "rel": "weak",
+   "auc": 0.547,
    "auc_base": 0.498,
    "avg": 66.1,
    "n_recent": 632,
    "n_test": 892,
-   "bottom20": 68.2,
-   "top20": 69.3
+   "bottom20": 63.1,
+   "top20": 69.8
   },
   "western": {
    "name": "경양식·레스토랑",
    "rel": "weak",
-   "auc": 0.545,
+   "auc": 0.556,
    "auc_base": 0.495,
    "avg": 60.5,
    "n_recent": 521,
    "n_test": 678,
-   "bottom20": 58.1,
-   "top20": 70.6
+   "bottom20": 61.0,
+   "top20": 72.1
   },
   "snack": {
    "name": "분식",
    "rel": "none",
-   "auc": 0.503,
+   "auc": 0.528,
    "auc_base": 0.522,
    "avg": 60.3,
    "n_recent": 305,
    "n_test": 435,
-   "bottom20": 65.5,
-   "top20": 64.4
+   "bottom20": 67.8,
+   "top20": 67.8
   },
   "jpcn": {
    "name": "일식·중식",
@@ -60,41 +60,41 @@
    "avg": 69.9,
    "n_recent": 635,
    "n_test": 834,
-   "bottom20": 65.9,
-   "top20": 74.9
+   "bottom20": 65.3,
+   "top20": 77.8
   },
   "cafe": {
    "name": "카페",
-   "rel": "none",
-   "auc": 0.538,
+   "rel": "weak",
+   "auc": 0.556,
    "auc_base": 0.528,
    "avg": 60.2,
    "n_recent": 2099,
    "n_test": 2794,
-   "bottom20": 57.6,
-   "top20": 67.4
+   "bottom20": 52.6,
+   "top20": 67.6
   },
   "conv": {
    "name": "편의점",
-   "rel": "none",
-   "auc": 0.524,
+   "rel": "weak",
+   "auc": 0.542,
    "auc_base": 0.483,
    "avg": 74.6,
    "n_recent": 696,
    "n_test": 936,
-   "bottom20": 74.5,
-   "top20": 79.7
+   "bottom20": 70.7,
+   "top20": 80.7
   },
   "bakery": {
    "name": "제과·베이커리",
    "rel": "ok",
-   "auc": 0.597,
+   "auc": 0.624,
    "auc_base": 0.511,
    "avg": 51.5,
    "n_recent": 388,
    "n_test": 493,
-   "bottom20": 38.4,
-   "top20": 61.6
+   "bottom20": 34.3,
+   "top20": 65.7
   },
   "deli": {
    "name": "반찬·즉석식품",
@@ -104,41 +104,41 @@
    "avg": 35.8,
    "n_recent": 2982,
    "n_test": 3845,
-   "bottom20": 5.9,
-   "top20": 50.2
+   "bottom20": 5.7,
+   "top20": 51.4
   },
   "hair": {
    "name": "미용실",
-   "rel": "none",
-   "auc": 0.558,
+   "rel": "weak",
+   "auc": 0.577,
    "auc_base": 0.561,
    "avg": 83.8,
    "n_recent": 1256,
    "n_test": 1672,
-   "bottom20": 77.6,
-   "top20": 84.8
+   "bottom20": 74.9,
+   "top20": 87.5
   },
   "beauty": {
    "name": "피부·네일",
    "rel": "none",
-   "auc": 0.526,
+   "auc": 0.53,
    "auc_base": 0.521,
    "avg": 71.2,
    "n_recent": 1195,
    "n_test": 1529,
-   "bottom20": 67.3,
-   "top20": 72.5
+   "bottom20": 65.4,
+   "top20": 71.2
   },
   "gym": {
    "name": "헬스·체육도장",
    "rel": "none",
-   "auc": 0.456,
+   "auc": 0.447,
    "auc_base": 0.486,
    "avg": 90.6,
    "n_recent": 318,
    "n_test": 472,
-   "bottom20": 88.4,
-   "top20": 84.2
+   "bottom20": 92.6,
+   "top20": 85.3
   },
   "karaoke": {
    "name": "노래연습장",
@@ -154,38 +154,39 @@
   "pcbang": {
    "name": "PC방",
    "rel": "ok",
-   "auc": 0.619,
+   "auc": 0.592,
    "auc_base": 0.481,
    "avg": 57.4,
    "n_recent": 195,
    "n_test": 289,
-   "bottom20": 46.6,
+   "bottom20": 48.3,
    "top20": 74.1
   },
   "petgroom": {
    "name": "반려동물 미용",
    "rel": "none",
-   "auc": 0.4,
+   "auc": 0.409,
    "auc_base": 0.445,
    "avg": 78.8,
    "n_recent": 184,
    "n_test": 247,
-   "bottom20": 86.0,
-   "top20": 70.0
+   "bottom20": 84.0,
+   "top20": 66.0
   }
  },
  "model": {
   "split": "2015~2019년 개업으로 학습 → 2020년~2023년 10월 개업으로 시험(미래 예측처럼)",
   "n_train": 24403,
   "n_test": 19235,
-  "auc_within_type_weighted": 0.569,
+  "auc_within_type_weighted": 0.578,
   "auc_within_type_baseline": 0.515,
+  "auc_within_type_no_infra": 0.569,
   "quintile_actual_survival": [
-   38.5,
-   60.6,
-   65.6,
-   70.5,
-   77.9
+   38.2,
+   60.3,
+   65.3,
+   70.4,
+   78.8
   ]
  },
  "public": {

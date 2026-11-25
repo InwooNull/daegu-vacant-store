@@ -97,7 +97,7 @@ meta = {
     'types': {t: {'name': TYPE_NAME[t], 'rel': REL[t], 'auc': met['by_type'][t].get('auc'), 'auc_base': met['by_type'][t].get('auc_baseline'),
                   'avg': met['recent_avg_survival'][t], 'n_recent': met['recent_n'][t], 'n_test': met['by_type'][t].get('n_test'),
                   'bottom20': met['by_type'][t].get('bottom20_actual'), 'top20': met['by_type'][t].get('top20_actual')} for t in codes},
-    'model': {k: met[k] for k in ['split', 'n_train', 'n_test', 'auc_within_type_weighted', 'auc_within_type_baseline', 'quintile_actual_survival']},
+    'model': {k: met[k] for k in ['split', 'n_train', 'n_test', 'auc_within_type_weighted', 'auc_within_type_baseline', 'auc_within_type_no_infra', 'quintile_actual_survival']},
     'public': spec, 'rules': {'biz_p': BIZ_P, 'biz_ratio': BIZ_R, 'pub_score': PUB_S},
     'dtypes': dong.groupby('dtype').size().to_dict(),
 }
