@@ -1,9 +1,9 @@
 {
- "generated": "2026-11-25 15:22",
+ "generated": "2026-11-25 15:34",
  "n_stores": 15592,
  "verdict_counts": {
-  "hold": 6116,
-  "public": 5328,
+  "public": 5859,
+  "hold": 5585,
   "biz": 4148
  },
  "permit_confirmed": 4242,
@@ -207,6 +207,12 @@
    "r": 1000,
    "target": "age5_14",
    "op": "구청 임차 + 다함께돌봄센터 위탁 기관"
+  },
+  "cowork": {
+   "name": "청년 공동작업 공간",
+   "r": 1000,
+   "target": "age20_39",
+   "op": "구청 임차 + 청년센터·창업 지원기관 위탁"
   }
  },
  "rules": {

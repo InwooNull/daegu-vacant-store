@@ -60,6 +60,17 @@ for _, r in dh.iterrows():
     p, h = geocode(r['주소'])
     if p: fac.append(('childcare', r['시설명'], p[0], p[1])); nd += 1
 print('다함께돌봄', len(dh), '좌표', nd)
+# 공동작업 공간 공급: 공공시설 개방(회의실·강의실·다목적실) + 창업 지원기관·창업보육센터
+op_ = pd.read_csv(os.path.join(D, '전국공공시설개방정보표준데이터_대구.csv'), encoding='utf-8-sig')
+op_ = op_[op_['개방시설유형구분'].isin(['회의실', '강의실', '다목적실'])].dropna(subset=['위도']).drop_duplicates(['개방장소명'])
+for _, r in op_.iterrows(): fac.append(('cowork', f"{r['개방장소명']}({r['개방시설유형구분']})", r['경도'], r['위도']))
+nc = 0
+for f_ in ['대구광역시_창업관련 지원기관 현황_20260923.csv']:
+    cs = pd.read_csv(os.path.join(D, f_), encoding='utf-8-sig')
+    for _, r in cs.iterrows():
+        p, h = geocode(str(r['주소']).replace('대구 ', '대구광역시 '))
+        if p: fac.append(('cowork', r['기관명'], p[0], p[1])); nc += 1
+print('공동작업 공급: 공공 개방 회의·강의실', len(op_), '창업 지원기관', nc)
 F = pd.DataFrame(fac, columns=['kind', 'name', 'lon', 'lat'])
 F = F[(F.lat > 35.5) & (F.lat < 36.4) & (F.lon > 128.3) & (F.lon < 129.0)]
 print(F.kind.value_counts().to_dict())
@@ -95,6 +106,7 @@ SPEC = {
     'senior': dict(name='동네 사랑방(경로당·쉼터)', r=500, target='age65p', op='구청 임차 + 대한노인회 구지회·종합사회복지관 위탁'),
     'library': dict(name='작은도서관·열람실', r=1000, target='pop', op='구청 임차 + 작은도서관 운영 단체·주민자치회 위탁'),
     'childcare': dict(name='초등 돌봄센터', r=1000, target='age5_14', op='구청 임차 + 다함께돌봄센터 위탁 기관'),
+    'cowork': dict(name='청년 공동작업 공간', r=1000, target='age20_39', op='구청 임차 + 청년센터·창업 지원기관 위탁'),
 }
 v = pd.read_csv(os.path.join(W, 'vacant.csv'), encoding='utf-8-sig', dtype={'dong_code': str})
 dg = dong.set_index('code')

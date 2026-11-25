@@ -62,7 +62,7 @@ points = []; cards = {}
 PP = (P.pivot(index='id', columns='type', values='p')[codes] * 100).round().astype(int)
 for sid, r in v.iterrows():
     # [id, 위도, 경도, 구, 판정(0 창업/1 공공/2 보류), 업종별 3년 생존 확률(%, meta.types 순서)]
-    points.append([sid, round(r.lat, 5), round(r.lon, 5), r['시군구명'], {'biz': 0, 'public': 1, 'hold': 2}[r.verdict], PP.loc[sid].tolist()])
+    points.append([sid, round(r.lat, 5), round(r.lon, 5), r['시군구명'], {'biz': 0, 'public': 1, 'hold': 2}[r.verdict], PP.loc[sid].tolist(), [int(round(pub.at[sid, f'{k}_score'])) for k in pk]])  # 6: 공공시설 종류별 부족 점수(meta.public 순서)
 # 카드: 구별 파일
 Pg = P.groupby('id')
 for gu, g in v.groupby('시군구명'):
@@ -82,6 +82,14 @@ for gu, g in v.groupby('시군구명'):
         }
     cards[gu] = out
     json.dump(out, open(os.path.join(S, 'cards', f'{gu}.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+# 지하철역 시간대별 이용(평균 하루, 05~24시) — 카드의 '시간대별 운영안'용
+sub = pd.read_csv(os.path.join(D, '대구교통공사_역별일별시간별승하차인원현황_20261031.csv'), encoding='utf-8-sig')
+hcols = [c for c in sub.columns if c.endswith('시') and '-' in c]
+ndays = sub.groupby(['월', '일']).ngroups
+hr = (sub.groupby('역명')[hcols].sum() / ndays).round(0)
+stn = pd.read_csv(os.path.join(W, 'subway_stations.csv'), encoding='utf-8-sig')
+json.dump([[r.station, round(r.lon, 5), round(r.lat, 5), hr.loc[r.station].astype(int).tolist()] for r in stn.itertuples() if r.station in hr.index],
+          open(os.path.join(S, 'subway.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
 json.dump(points, open(os.path.join(S, 'stores.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
 # 행정동 요약
 vs = v.groupby('dong_code').verdict.value_counts().unstack(fill_value=0)

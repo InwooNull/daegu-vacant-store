@@ -18,6 +18,7 @@
 | 3 | 구·군 이름 → 카드 파일 이름(`cards/<구>.json`) |
 | 4 | 판정: 0 창업 연계 / 1 공공 활용 / 2 보류 |
 | 5 | 업종별 3년 생존 확률(% 정수), `meta.types` 순서 |
+| 6 | 공공시설 종류별 부족 점수(0~100 정수), `meta.public` 순서 (senior, library, childcare, cowork) |
 
 ## 2. `cards/<구·군>.json` — 점포를 눌렀을 때 카드
 ```json
@@ -41,7 +42,8 @@
 ## 4. 그 밖의 파일
 - `dong.geojson`: 행정동 경계(SGIS 2025-2Q, 속성 `code`, `name`)
 - `dong_summary.json`: 행정동별 `code, name, dtype, pop, r65, r2039, rhh1, n, biz, public, hold`
-- `facilities.json`: `{"senior": [[이름, 경도, 위도], ...], "library": [...], "childcare": [...]}`
+- `subway.json`: `[[역명, 경도, 위도, [05시~23시 시간대별 하루 평균 승하차]], ...]`
+- `facilities.json`: `{"senior": [[이름, 경도, 위도], ...], "library": [...], "childcare": [...], "cowork": [...]}`
 
 ## Colab 모델을 넣는 가장 쉬운 방법
 1. Colab에서 빈 점포 목록(`stores.json`의 ID·좌표)을 받아 업종별 확률을 계산합니다.
