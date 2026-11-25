@@ -4,10 +4,10 @@
 (function () {
   'use strict';
   const VERDICT = ['biz', 'public', 'hold'];
-  const VNAME = { biz: '창업 연계', public: '공공 활용', hold: '보류' };
-  const VDESC = { biz: '버틸 업종이 있는 자리', public: '주민 시설이 모자란 자리', hold: '둘 다 기준 미달' };
+  const VNAME = { biz: '창업 추천', public: '공공시설 추천', hold: '지켜보기' };
+  const VDESC = { biz: '가게가 오래 갈 만한 자리', public: '동네에 필요한 시설이 부족한 자리', hold: '아직 뚜렷한 쓰임이 없는 자리' };
   const COLOR = { biz: '#2f5fd0', public: '#1f8a5b', hold: '#9aa1ad' };
-  const REL_NAME = { ok: '판정에 사용', weak: '판정에 사용(약함)', none: '참고용' };
+  const REL_NAME = { ok: '사용', weak: '사용', none: '제외' };
   const DTYPE_COLOR = {
     '고령 1인·노후 주택형': '#d9822b', '교외·농촌 고령형': '#a5794f', '중장년 혼합 주거형': '#c9b458',
     '아파트 가족형': '#7aa6c2', '영유아 신축 아파트형': '#5e9c86', '청년 1인 가구형': '#9a7fc1'
@@ -19,6 +19,7 @@
   const fmt = (n) => n.toLocaleString('ko-KR');
   const pct = (x) => Math.round(x * 100) + '%';
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const eul = (w) => { const c = w.charCodeAt(w.length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? '을' : '를'; };
   const dist = (m) => (m >= 1000 ? (m / 1000).toFixed(1) + 'km' : m + 'm');
 
   const DATA_BASE = 'data/';
@@ -79,7 +80,7 @@
     const a = (k[0] / n) * 360, b = a + (k[1] / n) * 360;  // 테두리 고리 = 창업·공공·보류 비율
     bg = `conic-gradient(${COLOR.biz} 0 ${a}deg, ${COLOR.public} ${a}deg ${b}deg, ${COLOR.hold} ${b}deg 360deg)`;
     if (n >= 100) cls += ' big';
-    return L.divIcon({ html: `<div class="${cls}" style="width:${size}px;height:${size}px;background:${bg}" title="창업 ${k[0]} · 공공 ${k[1]} · 보류 ${k[2]}"><span>${n >= 1000 ? (n / 1000).toFixed(1) + '천' : n}</span></div>`, className: '', iconSize: [size, size] });
+    return L.divIcon({ html: `<div class="${cls}" style="width:${size}px;height:${size}px;background:${bg}" title="창업 ${k[0]} · 공공시설 ${k[1]} · 지켜보기 ${k[2]}"><span>${n >= 1000 ? (n / 1000).toFixed(1) + '천' : n}</span></div>`, className: '', iconSize: [size, size] });
   }
 
   function visible(s) { return state.verdicts.has(s[4]) && (!state.gu || s[3] === state.gu); }
@@ -108,7 +109,7 @@
     if (state.type) {
       el.innerHTML = `<b>${esc(meta.types[state.type].name)}</b> 3년 생존 확률<br><span style="display:inline-block;width:120px;height:8px;border-radius:4px;background:linear-gradient(90deg,${SEQ.join(',')})"></span><br>원 안 숫자 = 빈 점포 수 · 색 = 평균 확률`;
     } else {
-      el.innerHTML = `<i style="background:${COLOR.biz}"></i>창업 연계 <i style="background:${COLOR.public};margin-left:8px"></i>공공 활용 <i style="background:${COLOR.hold};margin-left:8px"></i>보류<br>원 안 숫자 = 빈 점포 수 · 테두리 = 판정 비율`;
+      el.innerHTML = `<i style="background:${COLOR.biz}"></i>창업 추천 <i style="background:${COLOR.public};margin-left:8px"></i>공공시설 추천 <i style="background:${COLOR.hold};margin-left:8px"></i>지켜보기<br>원 안 숫자 = 빈 점포 수 · 테두리 색 = 추천 비율`;
     }
   }
 
@@ -130,21 +131,12 @@
     gs.addEventListener('change', () => { state.gu = gs.value; redraw(); fitGu(); });
 
     const ts = $('#typeSelect');
-    const groups = { ok: [], weak: [], none: [] };
-    typeKeys.forEach((t) => groups[meta.types[t].rel].push(t));
-    [['ok', '예측 근거 있음'], ['weak', '예측력 약함'], ['none', '참고용 (예측력 낮음)']].forEach(([k, lab]) => {
-      if (!groups[k].length) return;
-      ts.insertAdjacentHTML('beforeend', `<optgroup label="${lab}">${groups[k].map((t) => `<option value="${t}">${esc(meta.types[t].name)}</option>`).join('')}</optgroup>`);
-    });
+    // 과거 데이터로 시험해 맞힌 업종만 보여 줌(나머지는 계산 방법 표에만)
+    typeKeys.filter((t) => meta.types[t].rel !== 'none')
+      .forEach((t) => ts.insertAdjacentHTML('beforeend', `<option value="${t}">${esc(meta.types[t].name)}</option>`));
     ts.addEventListener('change', () => {
       state.type = ts.value;
       $('#seqLegend').hidden = !state.type;
-      const w = $('#typeWarn'); const ty = meta.types[state.type];
-      if (ty && ty.rel !== 'ok') {
-        w.hidden = false;
-        w.textContent = ty.auc == null ? `${ty.name}은 시험할 개업 건수가 적어 정확도를 재지 못했습니다. 참고로만 보세요.`
-          : `${ty.name}은 과거 데이터로 시험했을 때 가려내는 힘이 약했습니다. 참고로만 보세요.`;
-      } else w.hidden = true;
       redraw();
     });
     $('#layerDong').addEventListener('change', (e) => toggleDong(e.target.checked));
@@ -214,21 +206,20 @@
     const R = meta.rules;
     if (c.v === 'biz') {
       const t = meta.types[c.top]; const p = c.biz.find((b) => b[0] === c.top)[1];
-      return { title: `${t.name} 창업 후보`, text: `3년 버틸 확률 <b>${pct(p)}</b> · 대구 평균 ${Math.round(t.avg)}%보다 높습니다.` };
+      return { title: `${t.name} 하기 좋은 자리`, text: `이 자리에 ${t.name}${eul(t.name)} 열면 3년 뒤에도 영업 중일 확률이 <b>${pct(p)}</b>로, 대구 평균(${Math.round(t.avg)}%)보다 높습니다.` };
     }
     if (c.v === 'public') {
       const sp = meta.public[c.pub[0][0]];
-      return { title: `${sp.name} 후보`, text: `대구 평균보다 확실히 잘될 업종이 없고, 주변에 이 시설이 모자랍니다. 구청 임차를 검토할 자리입니다.` };
+      return { title: `${sp.name}로 쓰기 좋은 자리`, text: `가게보다는 동네에 부족한 ${sp.name}로 쓰는 편이 더 도움이 되는 자리입니다.` };
     }
     const high = c.fl && !/^(1|2)$/.test(c.fl);
-    return { title: '지켜볼 자리', text: `창업 기준(확률 ${Math.round(R.biz_p * 100)}% 이상, 대구 평균의 ${R.biz_ratio}배 이상)과 공공 기준(결손 ${R.pub_score}점 이상${high ? ', 1~2층' : ''})을 넘지 못했습니다.` };
+    return { title: '조금 더 지켜볼 자리', text: `지금은 창업과 공공시설 중 어느 쪽이 더 낫다고 보기 어렵습니다.${high ? ' 높은 층이나 지하라 공공시설로 쓰기에도 불편합니다.' : ''}` };
   }
 
   function bar(b) {
     const t = meta.types[b[0]]; const none = t.rel === 'none';
-    const diff = Math.round(b[1] * 100 - t.avg);
     return `<div class="bar ${none ? 'none' : ''}"><span class="nm">${esc(t.name)}</span>
-      <span class="val">${pct(b[1])}<small>평균 ${diff >= 0 ? '+' : ''}${diff}%p</small></span>
+      <span class="val">${pct(b[1])}<small>대구 평균 ${Math.round(t.avg)}%</small></span>
       <span class="track"><span class="fill" style="width:${Math.round(b[1] * 100)}%"></span><span class="avg" style="left:${t.avg}%"></span></span></div>`;
   }
 
@@ -236,9 +227,8 @@
     const h = headline(c);
     const usable = c.biz.filter((b) => meta.types[b[0]].rel !== 'none')
       .sort((a, b) => (b[1] * 100 - meta.types[b[0]].avg) - (a[1] * 100 - meta.types[a[0]].avg));
-    const top3 = usable.slice(0, 3);
-    const others = c.biz.filter((b) => !top3.includes(b));
-    const P = c.pub[0]; const sp = meta.public[P[0]]; const has = P[1] > 0;
+    const top3 = usable.slice(0, 3);  // 대구 평균보다 가장 나은 3개
+        const P = c.pub[0]; const sp = meta.public[P[0]]; const has = P[1] > 0;
     const floor = c.fl ? `${esc(c.fl)}층` : '층 정보 없음';
     return `
       <div class="head ${c.v}">
@@ -260,25 +250,23 @@
         <p class="lead">3년 뒤에도 영업 중일 확률 · 세로선은 대구 평균</p>
         <div class="bars">${top3.map(bar).join('')}</div>
         ${c.why.length && c.top ? `<ul class="why"><b style="margin-left:-16px;display:block;color:var(--ink)">${esc(meta.types[c.top].name)} 근거</b>${c.why.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
-        <details class="all"><summary>다른 업종 ${others.length}개 보기</summary>
-          <div class="bars">${others.map(bar).join('')}</div>
-          <p class="lead">회색 막대는 예측력이 낮아 판정에 쓰지 않은 업종입니다.</p></details>
+
       </section>
 
       <section class="sec">
         <h4>주민에게 모자란 시설</h4>
         <p class="lead">걸어서 갈 거리 안 시설을 대상 인구와 대구 평균에 비교</p>
         <div class="pub-main ${has ? '' : 'none'}">
-          <div class="row"><b>${esc(sp.name)}</b><span class="score">${has ? '결손 ' + Math.round(P[1]) + '점' : '충분'}</span></div>
+          <div class="row"><b>${esc(sp.name)}</b><span class="score">${has ? '부족 ' + Math.round(P[1]) + '점' : '충분'}</span></div>
           <dl class="facts">
             <div><dt>도보 ${dist(sp.r)} 안</dt><dd>${P[2]}곳</dd></div>
             <div><dt>가장 가까운 곳</dt><dd>${dist(P[3])}</dd></div>
             <div><dt>대상 인구(추정)</dt><dd>${fmt(P[4])}명</dd></div>
-            <div><dt>대구 평균 대비</dt><dd>${P[5] >= 10 ? '10배 이상' : P[5].toFixed(1) + '배'}</dd></div>
+            <div><dt>대구 평균 대비</dt><dd>${P[2] === 0 ? '시설 없음' : P[5] >= 10 ? '10배 이상' : P[5].toFixed(1) + '배'}</dd></div>
           </dl>
           ${has ? `<p class="op">운영(제안): ${esc(sp.op)}</p>` : ''}
         </div>
-        <div class="pub-rest">${c.pub.slice(1).map((p) => `<div><span>${esc(meta.public[p[0]].name)}</span><span>${p[1] > 0 ? '결손 ' + Math.round(p[1]) + '점' : '충분'}</span></div>`).join('')}</div>
+        <div class="pub-rest">${c.pub.slice(1).map((p) => `<div><span>${esc(meta.public[p[0]].name)}</span><span>${p[1] > 0 ? '부족 ' + Math.round(p[1]) + '점' : '충분'}</span></div>`).join('')}</div>
       </section>
       <p class="note">판정은 참고 자료이고 결정은 구청이 합니다. 확률은 인허가 개업·폐업 기록으로 학습한 값으로 매출을 뜻하지 않습니다. (${esc(id)})</p>`;
   }
@@ -315,9 +303,9 @@
       </ul>
       <h3>4. 판정 규칙</h3>
       <ul>
-        <li><b>창업 연계 ${fmt(vc.biz || 0)}곳:</b> 판정에 쓰는 업종 중 하나라도 확률 ${Math.round(meta.rules.biz_p * 100)}% 이상이면서 대구 평균의 ${meta.rules.biz_ratio}배 이상</li>
-        <li><b>공공 활용 ${fmt(vc.public || 0)}곳:</b> 창업 기준 미달, 결손 점수 ${meta.rules.pub_score}점 이상, 1~2층(또는 층 정보 없음)</li>
-        <li><b>보류 ${fmt(vc.hold || 0)}곳:</b> 둘 다 아님</li>
+        <li><b>창업 추천 ${fmt(vc.biz || 0)}곳:</b> 판정에 쓰는 업종 중 하나라도 확률 ${Math.round(meta.rules.biz_p * 100)}% 이상이면서 대구 평균의 ${meta.rules.biz_ratio}배 이상</li>
+        <li><b>공공시설 추천 ${fmt(vc.public || 0)}곳:</b> 창업 기준 미달, 결손 점수 ${meta.rules.pub_score}점 이상, 1~2층(또는 층 정보 없음)</li>
+        <li><b>지켜보기 ${fmt(vc.hold || 0)}곳:</b> 둘 다 아님</li>
       </ul>
       <h3>데이터</h3>
       <p>소상공인시장진흥공단 상가(상권)정보, 행정안전부 지방행정 인허가, 국가데이터처 SGIS 행정구역 통계(2024)·행정동 경계, 대구광역시 경로당·다함께돌봄센터·시내버스 정류소, 행정안전부 표준데이터(도서관·경로당·지역아동센터). 개인 단위 정보는 쓰지 않았습니다.</p>`;

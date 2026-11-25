@@ -48,10 +48,10 @@ med = met['median_train']
 def reasons(r):
     t = r.type; out = []
     m = med[t]['n_same300']
-    out.append(f"반경 300m 같은 업종 영업 {int(r.n_same300)}곳 (대구 개업 자리 중앙값 {int(m)}곳)")
-    if r.close1y_same300 > 0: out.append(f"최근 1년 반경 300m 같은 업종 폐업 {int(r.close1y_same300)}곳")
-    if r.hist_n500 >= 5: out.append(f"반경 500m에서 3~6년 전 문 연 같은 업종 {int(r.hist_n500)}곳 중 {int(r.hist_surv500)}곳이 3년 넘게 영업")
-    if r.prior_close_addr > 0: out.append(f"같은 지번에서 과거 폐업 {int(r.prior_close_addr)}건(인허가 기준)")
+    out.append(f"300m 안에 같은 업종 가게가 없음 (대구 보통 {int(m)}곳)" if r.n_same300 == 0 else f"300m 안에 같은 업종 {int(r.n_same300)}곳이 영업 중 (대구 보통 {int(m)}곳)")
+    if r.close1y_same300 > 0: out.append(f"최근 1년 사이 300m 안 같은 업종 {int(r.close1y_same300)}곳 폐업")
+    if r.hist_n500 >= 5: out.append(f"500m 안에서 3~6년 전 문 연 같은 업종 {int(r.hist_n500)}곳 중 {int(r.hist_surv500)}곳이 3년 넘게 영업")
+    if r.prior_close_addr > 0: out.append(f"이 지번에서 예전에 {int(r.prior_close_addr)}번 폐업")
     return out[:4]
 
 

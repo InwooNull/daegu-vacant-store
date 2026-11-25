@@ -15,7 +15,7 @@
     <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
     <div>
       <h1>빈 점포 한 칸, 장사할 곳인가 쉼터가 될 곳인가</h1>
-      <p class="sub">대구 빈 점포를 공공데이터로 두 갈래 판정 · 16비트</p>
+      <p class="sub">빈 점포마다 가게와 공공시설 중 어디에 맞는지 알려 드려요 · 16비트</p>
     </div>
   </div>
   <button class="link" id="openMethod" type="button">계산 방법</button>
@@ -34,9 +34,8 @@
     <details class="more-opts" id="typeBox">
       <summary>업종별 성공 확률로 보기</summary>
       <p class="hint">업종을 고르면 그 업종을 열었을 때 3년 버틸 확률로 색을 칠합니다.</p>
-      <select id="typeSelect" aria-label="업종 선택"><option value="">사용 안 함 (판정 색)</option></select>
+      <select id="typeSelect" aria-label="업종 선택"><option value="">업종 고르기</option></select>
       <div class="legend-seq" id="seqLegend" hidden><span>낮음</span><i></i><span>높음</span></div>
-      <p class="hint warn" id="typeWarn" hidden></p>
     </details>
 
     <details class="more-opts">
